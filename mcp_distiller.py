@@ -174,7 +174,44 @@ def distiller_greet_me(username):
     """Function to say hello to a user who wants to access Distiller"""
     return f'hello {username}. What do you want to get from Distiller?'
 
-def get_scan_by_id_old(distiller_scan_id: int):
+@mcp.tool()
+def put_note(distiller_scan_id: int, note: str):
+    """ Set the note field in Distiller. This can be used to 
+    save extra data about a 4D STEM scan.
+    
+    NON MCP version for testing
+    
+    Parameters
+    ----------
+    distiller_scan_id : int
+        The Disitller scan id. This is a unique ID attached to each data set in the database.
+    note : str
+        The information to store in the notes section of Distiller
+        
+    Returns
+    -------
+    None
+    """
+    import json
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/scans/{distiller_scan_id}"
+
+    try:
+        response = requests.patch(url, headers=headers, data=json.dumps({'notes':note}))
+        response.raise_for_status()
+        json_data = response.json()
+        print(json_data)
+        return Scan(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
+def get_scan_by_id_test(distiller_scan_id: int):
     """ Get information about a data set in Distiller based 
     on the Distiller ID number
     
@@ -208,13 +245,52 @@ def get_scan_by_id_old(distiller_scan_id: int):
     except RequestException as req_err:
         raise RequestException(f"Request exception occurred: {req_err}")
 
+def put_note_test(distiller_scan_id: int, note: str):
+    """ Set the note field in Distiller. This can be used to 
+    save extra data about a 4D STEM scan.
+    
+    NON MCP version for testing
+    
+    Parameters
+    ----------
+    distiller_scan_id : int
+        The Disitller scan id. This is a unique ID attached to each data set in the database.
+    note : str
+        The information to store in the notes section of Distiller
+        
+    Returns
+    -------
+    None
+    """
+    import json
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/scans/{distiller_scan_id}"
+
+    try:
+        response = requests.patch(url, headers=headers, data=json.dumps({'notes':note}))
+        response.raise_for_status()
+        json_data = response.json()
+        print(json_data)
+        return Scan(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
 if __name__ == "__main__":
     # mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     #mcp.run(transport="sse", host="131.243.3.204", port="8080")
     
     # Test getting information from Distiller
-    aa = get_scan_by_id_old(distiller_scan_id=35155)
-    print(f'Screen current = {aa.metadata['Screen current']}')
-    print(f'notes = {aa.notes}')
+    aa = get_scan_by_id_test(distiller_scan_id=35249)
+    if aa.metadata:
+        print(f'Screen current = {aa.metadata['Screen current']}')
+    if aa.notes:
+        print(f'notes = {aa.notes}')
     
-    
+    print('change the note.')
+    put_note(distiller_scan_id=35249, note='Posted through the API')
