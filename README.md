@@ -1,2 +1,2 @@
 # team05-mcp-server
-MCP server for communicating with the Team0.5 Microscope 
+MCP server and supporting server(s) for communicating with the TEAM 0.5 Transmission Electron Microscope 
