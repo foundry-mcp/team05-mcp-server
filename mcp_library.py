@@ -246,6 +246,8 @@ def get_stage_pos():
 def get_camera_length():
     '''
     Get current STEM camera length. The camera length is in meters.
+    This value should be treated as a uncalibrated "label." Converting
+    it to a calibrated value is an extra step.
 
     Returns
     -------
@@ -267,7 +269,7 @@ def get_camera_length_index():
     
     Returns
     -------
-    None.
+    None
 
     '''
     d = {'type': 'get_camera_length_index'}
@@ -287,7 +289,7 @@ def set_mag(mag:int):
 
     Returns
     -------
-    None.
+    None
 
     '''
     d = {'type': 'set_mag', 'mag': mag}
@@ -308,7 +310,7 @@ def set_camera_length_index(CL_index:int):
 
     Returns
     -------
-    None.
+    None
 
     '''
     d = {'type': 'set_camera_length_index', 'CL_index': CL_index}
@@ -571,12 +573,13 @@ def unblank_beam():
 @mcp.tool()
 def get_voltage():
     '''
-    Find the accelerating voltage of the microscope
+    Get the accelerating voltage of the microscope
     
     Returns
     -------
-    voltage: float.
-        Accelerating voltage of the microscope in volts
+    : float
+        Accelerating voltage of the microscope in volts. This is also known as
+        the high tension.
     
     '''
     d = {'type': 'get_voltage'}
@@ -587,12 +590,12 @@ def get_voltage():
 @mcp.tool()
 def get_defocus():
     '''
-    Find the defocus of the microscope
+    Get the defocus of the microscope
     
     Returns
     -------
-    defocus: float.
-        Current defocus value of the microscope in metres
+    : float
+        Current defocus value of the microscope in meters.
     
     '''
     d = {'type': 'get_defocus'}
@@ -603,7 +606,9 @@ def get_defocus():
 @mcp.tool()
 def set_defocus(target_df:float=0e-9):
     '''
-    Set the defocus of the microscope
+    Set the defocus of the microscope in meters.
+
+    TODO: Need to figure out what this returns.
     
     Returns
     -------
@@ -613,10 +618,12 @@ def set_defocus(target_df:float=0e-9):
     '''
     d = {'type': 'set_defocus', 'target_df': target_df}
     Response = microscope_client.send_traffic(d)
-    df = Response['reply_message'] 
+    df = Response['reply_message']
     return df
 
+###
 # Gatan server commands
+###
 @mcp.tool()
 def move_beam_dm(dX:int, dY:int):
     '''
@@ -660,6 +667,7 @@ def acquire_4D_scan(width:int, height:int):
 
 
 class Microscope_Client():
+    '''Communicates with the server on the microscope PC.'''
     def __init__(self, host='192.168.0.24', port=7001):
         try:
             # Set timeout in milliseconds
@@ -700,10 +708,9 @@ class Microscope_Client():
         except zmq.Again:
             print("Timeout occurred")
             return None
-        
-
 
 class Gatan_Client():
+    """Communicates with the server on the Gatan PC."""
     def __init__(self, host='192.168.0.30', port=13579):
         try:
             context = zmq.Context()
@@ -735,25 +742,32 @@ class Gatan_Client():
 
 
 if __name__ == "__main__":
+    # microscope PC connection settings
     mhost = '192.168.0.24'
     mport = 7001
     
     microscope_client = Microscope_Client(mhost, mport) # Communicate with microscope PC
     
-    beacon_client = BEACON_Client(mhost, mport) # Communicate with microscope PC
-    
+    beacon_client = BEACON_Client(mhost, mport) # Communicate with BEACON on the microscope PC
+
+    # Check the connection
     d = {'type': 'ping'}
     Response = microscope_client.send_traffic(d)
     print(Response['reply_message'])
 
-    
+    # Gatan PC connection settings
     ghost = '192.168.0.30'
     gport = 13579
 
-    gatan_client = Gatan_Client(ghost, gport)
-    
+    gatan_client = Gatan_Client(ghost, gport) # communicatse with the Gatan PC
+
+    # Get some initial settings to test things out
+    # 
+    print('TODO: REMOVE THESE AFTER TESTING')
     print(get_voltage())
     print(get_defocus())
     print(set_defocus())
-    
+
+    print('MCP run command commented out.')
     #mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    
