@@ -3,7 +3,8 @@
 Created on Thu Aug 21 14:00:45 2025
 
 This is a set of MCP commands for the TEAM 0.5 microscope and the 
-4D Camera.
+4D Camera. It sends commands to the microscope_server(s) running on
+the microscope PC and on the Gatan PC.
 
 @author: alexa
 """
@@ -39,8 +40,6 @@ from GUI_Client import BEACON_Client
 def team05_greet_me(username):
     """Function to say hello to a user who wants to control the team05"""
     return f'Hello {username}. Welcome to the TEAM0.5'
-
-
 
 # Microscope (BEACON) server commands
 @mcp.tool()
@@ -207,6 +206,22 @@ def get_mag():
     Response = microscope_client.send_traffic(d)
     mag = Response['reply_data']
     return mag
+
+@mcp.tool()
+def get_convergence_angle():
+    '''
+    Get current STEM convergence angle in radians.
+
+    Returns
+    -------
+    : float
+        STEM convergence angle in radians.
+
+    '''
+    d = {'type': 'get_convergence_angle'}
+    Response = microscope_client.send_traffic(d)
+    angle = Response['reply_data']
+    return angle
 
 @mcp.tool()
 def get_stage_pos():
