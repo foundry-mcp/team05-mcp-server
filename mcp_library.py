@@ -647,6 +647,8 @@ def move_beam_dm(dX:int, dY:int):
 def acquire_4D_scan(width:int, height:int):
     '''
     Acquire a 4D-STEM scan.  This takes a data set using the 4D Camera.
+    Ensure you wait a sufficinet amount of time for the data to offload
+    or stream before calling this again.
     
     Parameters
     ----------
@@ -665,23 +667,19 @@ def acquire_4D_scan(width:int, height:int):
     gatan_client.send_traffic(('take_and_return_data', params))
     gatan_client.send_traffic(('set_tia', 0)) # set tia for x-corr
 
-
 class Microscope_Client():
     '''Communicates with the server on the microscope PC.'''
     def __init__(self, host='192.168.0.24', port=7001):
         try:
             # Set timeout in milliseconds
-            timeout_ms = 10000  # 1 second
+            timeout_ms = 50000  # 5 seconds
             context = zmq.Context()
             self.ClientSocket = context.socket(zmq.REQ)
-            
             self.ClientSocket.setsockopt(zmq.RCVTIMEO, timeout_ms)
             self.ClientSocket.setsockopt(zmq.SNDTIMEO, timeout_ms)
             self.ClientSocket.connect(f"tcp://{host}:{port}")
-            #print(f'Connected to BEACON server at {host}:{port}')
-            
         except ConnectionRefusedError:
-            print('Start the BEACON server')
+            print('Please start the BEACON server and try again...')
             exit()
     
     def send_traffic(self, message):
@@ -695,9 +693,8 @@ class Microscope_Client():
         
         Returns
         -------
-        response : dict
-        
-            Response from the server.
+        : dict or None
+            Response from the server. If no repsonse then None.
         '''
         print(f'Microscope_Client: {message}')
         try:
@@ -710,15 +707,21 @@ class Microscope_Client():
             return None
 
 class Gatan_Client():
-    """Communicates with the server on the Gatan PC."""
+    """Communicates with the server on the Gatan PC. This is currently called
+    the multiscan server because it was used to take multiple 4D-STEM scans. 
+    We will rename this to a more generic name in the future."""
     def __init__(self, host='192.168.0.30', port=13579):
         try:
+            # Set timeout in milliseconds
+            timeout_ms = 50000  # 5 seconds
             context = zmq.Context()
             self.ClientSocket = context.socket(zmq.REQ)
+            self.ClientSocket.setsockopt(zmq.RCVTIMEO, timeout_ms)
+            self.ClientSocket.setsockopt(zmq.SNDTIMEO, timeout_ms)
             self.ClientSocket.connect(f"tcp://{host}:{port}")
             print('Connected')
         except ConnectionRefusedError:
-            print('Start the multiscan server')
+            print('Please start the Gatan (multiscan) server and try again...')
             exit()
         
     def send_traffic(self, message):
@@ -732,17 +735,20 @@ class Gatan_Client():
         
         Returns
         -------
-        response : dict
-            Response from the server.
+        : dict or None
+            Response from the server. If no repsonse then None.
         '''
         print(f'Gatan_Client: {message}')
-        self.ClientSocket.send(pickle.dumps(message))
-        response = pickle.loads(self.ClientSocket.recv())
-        return response
-
+        try:
+            self.ClientSocket.send(pickle.dumps(message))
+            response = pickle.loads(self.ClientSocket.recv())
+            return response
+        except zmq.Again:
+            print("Timeout occurred.")
+            return None
 
 if __name__ == "__main__":
-    # microscope PC connection settings
+    # TEAM 0.5 microscope PC connection settings
     mhost = '192.168.0.24'
     mport = 7001
     
@@ -762,12 +768,11 @@ if __name__ == "__main__":
     gatan_client = Gatan_Client(ghost, gport) # communicatse with the Gatan PC
 
     # Get some initial settings to test things out
-    # 
     print('TODO: REMOVE THESE AFTER TESTING')
     print(get_voltage())
     print(get_defocus())
     print(set_defocus())
 
-    print('MCP run command commented out.')
+    print('Note: MCP run command commented out.')
     #mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
