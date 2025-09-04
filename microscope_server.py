@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 15 10:14:26 2023
+A server based on zeroMQ that operates on the TEAM 0.5 microsocpe. It
+can communicate with the CEOS RPC gateway for aberration correction,
+the TIA (ESVision) program for STEM imaging, and the TEMScripting 
+COM server to get and set various microscope settings.
 
-@author: alexa
+@author: Alex Pattison, Peter Ercius, Morgan Wall
 """
 
 import zmq
@@ -155,22 +158,23 @@ class CorrectorCommands():
         return d
     
 class TIA_control():
+    """This class implements connectivity to TEMScripting and TIA (ESVision)"""
     def __init__(self):
         # Connect to the microscope
-        self._microscope = CreateObject('TEMScripting.Instrument')
-        self.TIA = CreateObject('ESVision.Application')
-        self.Acq = self._microscope.Acquisition
-        self.Ill = self._microscope.Illumination
-        self.Proj = self._microscope.Projection
-        self.Stage = self._microscope.Stage
+        self._microscope = CreateObject('TEMScripting.Instrument') # the microscope
+        self.TIA = CreateObject('ESVision.Application') # the TIA software for STEM imaging
+        self.Acq = self._microscope.Acquisition # Acquisition object
+        self.Ill = self._microscope.Illumination # pre-specimen Illumination system
+        self.Proj = self._microscope.Projection # post-specimen Projection system
+        self.Stage = self._microscope.Stage # The sample stage
         
-        # Connect to STEM
+        # Connect to HAADF-STEM detector
         detector0 = self.Acq.Detectors(0)
-        # Add the first detector
+        # Add the first detector (HAADF-STEM detector on TEAM 0.5)
         self.Acq.AddAcqDevice(detector0)
         
-        self.TIA.ScanningServer().AcquireMode = 1 #0=continuous, 1=single
-        self.TIA.ScanningServer().ScanMode = 2 #0=spot, 1=line, 2=frame
+        self.TIA.ScanningServer().AcquireMode = 1 # 0=continuous, 1=single
+        self.TIA.ScanningServer().ScanMode = 2 # 0=spot, 1=line, 2=frame
     
     def get_screenshot(self):
         """ Take a screen shot of the first monitor.
@@ -185,14 +189,18 @@ class TIA_control():
         return img
     
     def open_column_valve(self):
+        """Opens the microscope column valves"""
         self._microscope.Vacuum.ColumnValvesOpen = True
         print('Column valves open')
 
     def close_column_valve(self):
+        """Closes the microscope column valves"""
         self._microscope.Vacuum.ColumnValvesOpen = False
         print('Column valves closed')
 
     def create_or_set_display_window(self, sizeX, sizeY):
+        """TIA needs a display window. This creates one specifically for BEACON
+        or makes it the active one if it exists."""
         self.window_name = 'BEACON image'
         winlist = self.TIA.DisplayWindowNames()
         found = False
@@ -215,24 +223,86 @@ class TIA_control():
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
 
     def get_mag(self):
+        """Get the STEM magnication.
+        
+        Returns
+        -------
+        : float
+        THe STEM magnification value.
+        """
         return self.Ill.StemMagnification
 
     def set_mag(self, mag):
+        """Set the STEM magnification. 
+        
+        Parameters
+        ----------
+        mag : float
+            The magnification as a number. e.x. 1.8 Mx is 1800000
+        """
         self.Ill.StemMagnification = mag
         print('Mag set to {}'.format(self.Ill.StemMagnification))
+
+    def get_stem_rotation(self):
+        """Get the STEM rotation in radians.
         
+        Returns
+        -------
+        : float
+        The STEM rotation value in radians.
+        """
+        return self.Ill.StemRotation
+
+    def set_stem_rotation(self, rot):
+        """Set the STEM rotation in radians.
+        
+        Parameters
+        ----------
+        rot : float
+            The rotation in radians. 
+        """
+        self.Ill.StemRotation = rot
+        print('Mag set to {}'.format(self.Ill.StemRotation))
+
+    def get_stem_convergence_angle(self):
+        """Get the STEM convergence angle in radians.
+        
+        Returns
+        -------
+        : float
+        The STEM convergence angle in radians.
+        """
+        return self.Ill.ConvergenceAngle
+    
     def get_stage_pos(self):
-        ''' Get stage position '''
+        ''' Get the stage position. This returns the X, Y, Z position (meters)
+        and the alpha and beta tilt angles (radians).
+        
+        Returns
+        -------
+        : tuple (float, float, float, float, float)
+           The X, Y, Z, alpha, beta values of the stage. The position 
+           is in meters and the angles are in radians.
+        '''
         stageObj = self.Stage.Position
         print('Stage position = {}'.format(stageObj))
         return stageObj.X, stageObj.Y, stageObj.Z, stageObj.A, stageObj.B
 
     def move_stage_delta(self, dX=0, dY=0, dZ=0, dA=0, dB=0):
-        ''' Move stage by delta value '''
+        ''' Move stage by delta value. The position values are in meters and the
+        angle values are in radians.
+        
+        Parameters
+        ----------
+        dX, dY, dZ : float
+        The change in stage position values in meters
+        dA, dB : float
+        The change in stage alpha and beta rotation values in radians. B is not implemented currently.
+        '''
         #n = int('{}{}{}{}{}'.format(int(dB==1), int(dA==1), int(dZ==1), int(dY==1), int(dX==1)), 2)
-        n = 15
-        print('Moving by {}, {}, {}, {}, {}'.format(dX, dY, dZ, dA, dB))
-        stageObj = self.Stage.Position
+        n = 15 # this sets the stage bits. 15 in binary is 1111 so the X, Y, Z, alpha are allowed to change
+        print('Moving by {}, {}, {} meters and {}, {} radians'.format(dX, dY, dZ, dA, dB))
+        stageObj = self.Stage.Position # get the current position
         stageObj.X += float(dX)
         stageObj.Y += float(dY)
         stageObj.Z += float(dZ)
@@ -242,14 +312,26 @@ class TIA_control():
         #print('Stage moved to = {}'.format(self.Stage.Position()))
     
     def move_stage_goto(self, X, Y, Z, A, B):
-        n = 15
+        """Set the stage position to the values input. This moves directly
+        to those coordinates. X, Y, Z are in meters and alpha, beta are in 
+        radians
+        
+        Parameters
+        ----------
+        X, Y, Z : float
+        The stage position values in meters
+        A, B : float
+        The stage alpha and beta rotation values in radians. B is not implemented currently
+        
+        """
+        n = 15 # this sets the stage bits. 15 in binary is 1111 so the X, Y, Z, alpha are allowed to change
         print('Going to {}, {}, {}, {}, {}'.format(X, Y, Z, A, B))
-        stageObj = self.Stage.Position
-        stageObj.X = float(X)
+        stageObj = self.Stage.Position # get the current position to have a position object.
+        stageObj.X = float(X) # meters
         stageObj.Y = float(Y)
         stageObj.Z = float(Z)
-        stageObj.A = float(A)
-        stageObj.B = float(B)
+        stageObj.A = float(A) # radians
+        stageObj.B = float(B) # not currently implemented.
         self.Stage.GoTo(stageObj, n)
         
     def blank(self):
@@ -263,21 +345,62 @@ class TIA_control():
         print('Beam unblanked')
     
     def get_voltage(self):
-        ''' Return gun voltage '''
+        ''' Returns the gun accelerating voltage in volts.
+        
+        Returns
+        -------
+        : float
+        The accelerating voltage. The high tension in V
+        '''
         return self._microscope.Gun.HTValue
+
+    def get_condensor_stigmator(self):
+        """Returns the current value of the condensor stigmator in meters. This 
+        is separate from the CEOS stigmator value.
+        
+        Returns
+        -------
+        : tuple (float, float)
+        The microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
+        
+        """
+        stig = self._microscope.Ill.CondenserStigmator
+        return (stig.X, stig,Y)
+
+    def get_condensor_stigmator(self, stig):
+        """Sets the current value of the condensor stigmator in meters. This 
+        is separate from the CEOS stigmator value.
+        
+        Parameters
+        ----------
+        stig : tuple (float, float)
+        The desired microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
+        
+        """
+        cur_stig = self._microscope.Ill.CondenserStigmator # get a stig object
+        cur_stig.X = stig[0]
+        cur_stig.Y = stig[1]
+        self._microscope.Ill.CondenserStigmator = cur_stig
     
     def get_defocus(self):
-        ''' Get defocus '''
+        ''' Returns the defocus in meters.
+        
+        Returns
+        -------
+        : float
+        The defocus value in meters
+        '''
         return self.Proj.Defocus
     
     def change_defocus(self, df):
         '''
-        Changes the defocus by a delta-f
+        Changes the defocus by the value of df. This is relative
+        to the current defocus.
         
         Parameters
         ----------
         df : float
-            Amount of defocus to change (in metres)
+            Amount of defocus to change (in meters)
         '''
         print('Changing defocus by {}'.format(df))
         currentDF = self.Proj.Defocus
@@ -291,11 +414,12 @@ class TIA_control():
         Parameters
         ----------
         target_df : float
-            Target defocus (in metres)
+            Target defocus (in meters)
         '''
         print('Changing defocus to {}'.format(target_df))
         self.Proj.Defocus = target_df
         print('Defocus set to {}'.format(self.Proj.Defocus))
+    
     
     def microscope_acquire_image(self, dwell, shape, offset=(0,0)):
         '''
@@ -541,8 +665,23 @@ class BEACON_Server():
             elif instruction == 'get_screenshot':
                 reply_message = 'screenshot taken'
                 reply_data = self.microscope.get_screenshot()
+            elif instruction == 'get_condenser_stigmator':
+                reply_message = 'get condenser stigmator'
+                reply_data = self.microscope.get_condenser_stigmator()
+            elif instruction == 'set_condenser_stigmator': # TODO: need to implement this in the dictionary
+                reply_message = 'set condenser stigmator'
+                reply_data = self.microscope.set_condenser_stigmator(self.d['cond_stig'])
+            elif instruction == 'get_convergence_angle':
+                reply_message = 'get convergence angle'
+                reply_data = self.microscope.get_convergence_angle()
+            elif instruction == 'get_stem_rotation':
+                reply_message = 'get stem rotation'
+                reply_data = self.microscope.get_stem_rotation()
+            elif instruction == 'set_stem_rotation':
+                reply_message = 'set stem rotation'
+                reply_data = self.microscope.set_stem_rotation(self.d['stem_rotation'])
             else:
-                reply_message = None
+                reply_message = None # TODO: Test if this can be a message back indicating unknown instruction
                 reply_data = None
             
             reply_d = {'reply_message': reply_message,
