@@ -9,3 +9,6 @@ The zeroMQ based server that communicates with the mciroscope scritping interfac
 
 # gatan_server.py (to be added)
 The zeroMQ based server that communicates with the Gatan Digital Micrograph software on the Gatan PC. This server is based on the "mulitscan_server" and not in the repo yet.
+
+# mcp_distiller.py
+A mcp agent that can get data from the Distiller database. You can get a range of scan_ids or data from a specific data set id.
