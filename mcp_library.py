@@ -6,7 +6,7 @@ This is a set of MCP commands for the TEAM 0.5 microscope and the
 4D Camera. It sends commands to the microscope_server(s) running on
 the microscope PC and on the Gatan PC.
 
-@author: alexa
+@author: Peter Ercius, Alex Pattison, Morgan Wall, Stephanie Ribet
 """
 
 import io
@@ -35,6 +35,49 @@ mcp = FastMCP("TEAM05_Controller")
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
+
+@mcp.tool()
+def calculate_optimal_defocus(
+    convergence_angle,
+    reciprocal_sampling,
+    overlap = 85,
+):
+    """
+    Calculates the optimal defocus and step size for a defocused
+    ptychography 4D-STEM data set acquisition based on a
+    given convergence angle and reciprocal sampling (sampling in 
+    diffration space) for defocused ptychography and parallax.
+
+    Parameters
+    ----------
+    convergence_angle : float
+        specified in mrad
+
+    reciprocal sampling : float
+        specified in inverse angstroms
+
+    overlap : float [optional]
+        overlap between adjacent probes in percent
+
+    Returns
+    -------
+    : tuple, (float, float)
+     A 2-tuple containing the optimal defocus in nm and the optimal step size in Angstrom
+    """
+
+    probe_box = 1/reciprocal_sampling
+
+    optimal_probe_diameter = 1/3 * probe_box
+
+    optimal_probe_radius = 1/2 * optimal_probe_diameter
+
+    defocus_A = optimal_probe_radius/(convergence_angle/1000)
+
+    defocus_nm = defocus_A/10
+
+    step_size = (1-overlap/100) * optimal_probe_diameter
+    
+    return defocus_nm, step_size
 
 @mcp.tool()
 def team05_greet_me(username):
