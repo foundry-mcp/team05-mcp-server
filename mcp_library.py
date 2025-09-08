@@ -18,7 +18,8 @@ import numpy as np
 import numpy.typing as npt
 import zmq
 
-from fastmcp import FastMCP, Image
+from fastmcp import FastMCP
+#import fastmcp.utilities.types.Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -30,7 +31,7 @@ import argparse
 
 mcp = FastMCP("TEAM05_Controller")
 
-# from PIL import Image
+# from PIL import pilImage
 
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
@@ -583,7 +584,7 @@ def get_screenshot():
     im.seek(0)
     encoded_image = base64.b64encode(im.getvalue()).decode('utf-8')
     
-    return Image(encoded_image)
+    return pilImage(encoded_image)
 
 @mcp.tool()
 def blank_beam():
