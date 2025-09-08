@@ -18,7 +18,7 @@ import numpy as np
 import time
 import argparse
 
-mcp = FastMCP("DigitalMicrographController")
+mcp = FastMCP("DistillerController")
     
 class Settings(BaseSettings):
     """ Settings for communicating with the Disitller API. The .env file
@@ -260,7 +260,8 @@ def put_note_test(distiller_scan_id: int, note: str):
         
     Returns
     -------
-    None
+    : Scan
+        A Scan class object with information about the scan that was changed 
     """
     import json
     headers = {
@@ -282,15 +283,15 @@ def put_note_test(distiller_scan_id: int, note: str):
         raise RequestException(f"Request exception occurred: {req_err}")
 
 if __name__ == "__main__":
-    # mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8081)
     #mcp.run(transport="sse", host="131.243.3.204", port="8080")
     
     # Test getting information from Distiller
-    aa = get_scan_by_id_test(distiller_scan_id=35249)
-    if aa.metadata:
-        print(f'Screen current = {aa.metadata['Screen current']}')
-    if aa.notes:
-        print(f'notes = {aa.notes}')
+    #aa = get_scan_by_id_test(distiller_scan_id=35249)
+    #if aa.metadata:
+    #    print(f'Screen current = {aa.metadata['Screen current']}')
+    #if aa.notes:
+    #    print(f'notes = {aa.notes}')
     
-    print('change the note.')
-    put_note(distiller_scan_id=35249, note='Posted through the API')
+    #print('change the note.')
+    # put_note(distiller_scan_id=35249, note='Posted through the API')
