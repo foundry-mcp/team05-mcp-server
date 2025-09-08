@@ -627,7 +627,7 @@ def get_voltage():
     '''
     d = {'type': 'get_voltage'}
     Response = microscope_client.send_traffic(d)
-    voltage = Response['reply_message'] 
+    voltage = Response['reply_data'] 
     return voltage
 
 @mcp.tool()
@@ -643,7 +643,7 @@ def get_defocus():
     '''
     d = {'type': 'get_defocus'}
     Response = microscope_client.send_traffic(d)
-    df = Response['reply_message'] 
+    df = Response['reply_data'] 
     return df
 
 @mcp.tool()
@@ -811,11 +811,11 @@ if __name__ == "__main__":
     gatan_client = Gatan_Client(ghost, gport) # communicatse with the Gatan PC
 
     # Get some initial settings to test things out
-    print('TODO: REMOVE THESE AFTER TESTING')
-    print(get_voltage())
-    print(get_defocus())
-    print(set_defocus())
+    #print('TODO: REMOVE THESE AFTER TESTING')
+    #print(get_voltage())
+    #print(get_defocus())
+    #print(set_defocus())
 
-    print('Note: MCP run command commented out.')
-    #mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    #print('Note: MCP run command commented out.')
+    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
