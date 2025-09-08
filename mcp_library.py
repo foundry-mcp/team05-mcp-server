@@ -90,16 +90,20 @@ def team05_greet_me(username):
 def acquire_ceos_tableau():
     d = {'type': 'tableau'}
     Response = microscope_client.send_traffic(d)
-    tableau_results = Response['reply_data']
-    return tableau_results
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
 
 @mcp.tool()
 def change_aberrations(ab_values:dict):
     '''
-    Change aberrations without acquiring image.
+    Change aberrations relative to the current values by the indicated amount. 
+    This is a delta from the current value.
     Aberrations are NOT reset to current values after function call.
     Some common names of the aberrations are:
-    C1 is defocus and is one-dimensional.
+    C1 is one-dimensional.
     A1 is 2-fold astigmatism and has an x and y component
     B2 is coma and has an x and y component
     C3 is the thrid-order shperical aberration (sometimes just called the spherical aberration) and is one-dimensional.
@@ -224,7 +228,7 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     d = {'type': 'image', 'dwell': dwell, 'shape': shape, 'offset': offset}
     Response = microscope_client.send_traffic(d)
     if Response is None:
-        return None
+        raise Exception('Command failed.')
     
     (image, calx, caly, cal_unit_name) = Response['reply_data']
     image_min = image.min()
@@ -248,8 +252,11 @@ def get_mag():
     '''
     d = {'type': 'get_mag'}
     Response = microscope_client.send_traffic(d)
-    mag = Response['reply_data']
-    return mag
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
 
 @mcp.tool()
 def get_convergence_angle():
@@ -264,8 +271,12 @@ def get_convergence_angle():
     '''
     d = {'type': 'get_convergence_angle'}
     Response = microscope_client.send_traffic(d)
-    angle = Response['reply_data']
-    return angle
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        print(reply_data)
+        return reply_data
 
 @mcp.tool()
 def get_stage_pos():
@@ -283,8 +294,11 @@ def get_stage_pos():
     '''
     d = {'type': 'get_stage_pos'}
     Response = microscope_client.send_traffic(d)
-    stage_position = Response['reply_data']
-    return stage_position
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
 
 @mcp.tool()
 def get_camera_length():
@@ -301,8 +315,11 @@ def get_camera_length():
     '''
     d = {'type': 'get_camera_length'}
     Response = microscope_client.send_traffic(d)
-    CL = Response['reply_data']
-    return CL
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
    
 @mcp.tool()
 def get_camera_length_index():
@@ -313,13 +330,17 @@ def get_camera_length_index():
     
     Returns
     -------
-    None
+    : float
+        The STEM camera length index.
 
     '''
     d = {'type': 'get_camera_length_index'}
     Response = microscope_client.send_traffic(d)
-    CL_index = Response['reply_data']
-    return CL_index
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
 
 @mcp.tool()
 def set_mag(mag:int):
@@ -486,6 +507,7 @@ def _focusing(df_range:float=1000e-9):
         ab_values[ab_keys[i]] = mm[i]*1e-9
 
     beacon_client.ab_only(ab_values)
+    print('end _focusing')
 
 @mcp.tool()
 def focusing(df_range:float=1000e-9):
@@ -502,11 +524,14 @@ def focusing(df_range:float=1000e-9):
 
     Returns
     -------
-    None.
+    : str
+        A string that the focusing finished.
 
     '''
-    
+    print('call _focusing')
     _focusing(df_range)
+    print('end _focusing')
+    return 'Focusing finished.'
     
 
 def centering(refImage:npt.NDArray, xymax:float=100e-9, ntries:int=4, df_range:float=None, 
@@ -628,8 +653,46 @@ def get_voltage():
     '''
     d = {'type': 'get_voltage'}
     Response = microscope_client.send_traffic(d)
-    voltage = Response['reply_data'] 
-    return voltage
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
+
+@mcp.tool()
+def get_stem_rotation_angle():
+    '''
+    Get the STEM scanning rotation angle. This is returned in radians.
+    
+    Returns
+    -------
+    : float
+        The STEM scanning rotation angle in radisns
+    
+    '''
+    d = {'type': 'get_stem_rotation_angle'}
+    Response = microscope_client.send_traffic(d)
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
+
+@mcp.tool()
+def set_stem_rotation_angle(rotation_angle:float=0.0):
+    '''
+    Set the STEM scanning rotation angle in radians.
+    
+    Returns
+    -------
+    : str
+        A response telling you the command succeeded
+    
+    '''
+    d = {'type': 'set_stem_rotation_angle', 'stem_rotation_angle':rotation_angle}
+    Response = microscope_client.send_traffic(d)
+    reply_message = Response['reply_message']
+    return reply_message
 
 @mcp.tool()
 def get_defocus():
@@ -644,15 +707,16 @@ def get_defocus():
     '''
     d = {'type': 'get_defocus'}
     Response = microscope_client.send_traffic(d)
-    df = Response['reply_data'] 
-    return df
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
 
 @mcp.tool()
 def set_defocus(target_df:float=0e-9):
     '''
     Set the defocus of the microscope in meters.
-
-    TODO: Need to figure out what this returns.
     
     Returns
     -------
