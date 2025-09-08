@@ -443,8 +443,10 @@ def cross_correlate(im0:npt.NDArray, im1:npt.NDArray):
 def registration(refImage:npt.NDArray, curImage:npt.NDArray, pixelSize:float):
     '''
     Find the offset between two images using cross correlation. The ouptut is in
-    terms of the pixelSize which is usually in meters..
-
+    terms of the pixelSize which is usually in meters.
+    
+    This function is used by centering for cross-correlation.
+    
     Parameters
     ----------
     refImage : numpy.ndarray
@@ -467,9 +469,12 @@ def registration(refImage:npt.NDArray, curImage:npt.NDArray, pixelSize:float):
     #print(offset_xy)
     return offset_xy
 
-# called by centering
 def _focusing(df_range:float=1000e-9):
-    range_dict = {'C1': [-df_range,df_range]}
+    """df_range is in meters. This function converts
+       to nanometers to send to the BEACON_Server. 
+       
+       This function is used by `focusing()` and `registration()`"""
+    range_dict = {'C1': [-df_range*1e9, df_range*1e9]}
 
     init_size_value = 5
     runs_value = 10
@@ -504,7 +509,7 @@ def _focusing(df_range:float=1000e-9):
     ab_keys = beacon_client.ab_keys
     ab_values = {}
     for i in range(len(ab_keys)):
-        ab_values[ab_keys[i]] = mm[i]*1e-9
+        ab_values[ab_keys[i]] = mm[i] * 1e-9 # convert to meters
 
     beacon_client.ab_only(ab_values)
     print('end _focusing')
@@ -515,10 +520,11 @@ def focusing(df_range:float=1000e-9):
     Performs autofocusing using BEACON. This is a Bayesian optimization 
     routine which searches with the specified range for the best
     focus. The best focus is set on the microscope automatically.
+    The df_range is the focal range to serch in meters.
 
     Parameters
     ----------
-    df_range : float in meters
+    df_range : float
         Maximum values plus and minus from the current defocus to 
         search. The default is 1000e-9 meters.
 
@@ -528,9 +534,9 @@ def focusing(df_range:float=1000e-9):
         A string that the focusing finished.
 
     '''
-    print('call _focusing')
+    print('call _focusing with df_range = {}'.format(df_range))
     _focusing(df_range)
-    print('end _focusing')
+    print('end focusing')
     return 'Focusing finished.'
     
 
