@@ -21,7 +21,7 @@ import zmq
 from fastmcp import FastMCP
 from fastmcp.resources import FileResource
 from pathlib import Path
-#import fastmcp.utilities.types.Image as mcpImage
+from fastmcp.utilities.types import Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -33,7 +33,7 @@ import argparse
 
 mcp = FastMCP("TEAM05_Controller")
 
-# from PIL import pilImage
+from PIL import Image as pilImage
 
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
@@ -48,7 +48,7 @@ mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.tx
 def calculate_optimal_defocus(
     convergence_angle:float,
     reciprocal_sampling:float,
-    overlap = 85:float,
+    overlap:float = 85,
 ):
     """
     Calculates the optimal defocus and step size for a defocused
@@ -615,12 +615,10 @@ def get_screenshot():
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
     image = Response['reply_data']
-    im = io.BytesIO()
-    image.save(im, format='PNG')
-    im.seek(0)
-    encoded_image = base64.b64encode(im.getvalue()).decode('utf-8')
-    
-    return pilImage(encoded_image)
+    pillow_image = pilImage(image)
+
+    return mcpImage(data=pillow_image.tobytes(), format="png")
+    #return pilImage(encoded_image)
 
 @mcp.tool()
 def blank_beam():
