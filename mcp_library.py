@@ -385,8 +385,8 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     
     new_id = mfid.mfid()
     dir_path = Path('D:/user_data/Claude')
-    file_path = dir_path / Path(new_id[0])
-    write_emd_data(str(file_path), data, calX, calY, user_name='Claude', sample_name='')
+    file_path = dir_path / Path(f'{new_id[0]}.emd')
+    write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
     
     return (calx, caly, cal_unit_name, image_min, image_max, image_std)
 
