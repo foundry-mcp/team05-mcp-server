@@ -205,24 +205,24 @@ def move_stage_delta(dX:float=0, dY:float=0, dZ:float=0, dA:float=0, dB:float=0)
 @mcp.tool()
 def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     '''
-    Acquire HAADF-STEM image. A tuple is returned with the 
-    image and calibration information.
+    Acquire HAADF-STEM image. A tuple is returned with information 
+    about the image. 
     
     Parameters
     ----------
     dwell : float
         Dwell time in seconds
     shape : tuple
-        Image shape as a tuple. The first element is the width and the second element is the height
+        Image shape as a tuple. The first element is the width and
+        the second element is the height
     
     Returns
     -------
-    : tuple (list, float, float, string, float, float, float)
-        The tuple is made of 4 elements. The description of the elements are 
-        (image as a list, x pixel calibration, y pixel calibration, the calibration unit name,
+    : tuple (float, float, string, float, float, float)
+        The tuple is made of 6 elements. The description of the elements are 
+        (x pixel calibration, y pixel calibration, the calibration unit name,
         the image minimum, the image maximum, and the image standard deviation).
     '''
-    print(type(dwell), type(shape))
     
     offset = (0, 0) # hard coded for now
     d = {'type': 'image', 'dwell': dwell, 'shape': shape, 'offset': offset}
@@ -230,14 +230,12 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     if Response is None:
         raise Exception('Command failed.')
     
-    (image, calx, caly, cal_unit_name) = Response['reply_data']
+    (calx, caly, cal_unit_name) = Response['reply_data']
     image_min = image.min()
     image_max = image.max()
     image_std = image.std()
     
-    simple_image = image.tolist()
-    
-    return (simple_image, calx, caly, cal_unit_name, image_min, image_max, image_std)
+    return (calx, caly, cal_unit_name, image_min, image_max, image_std)
 
 @mcp.tool()
 def get_mag():
