@@ -9,27 +9,37 @@ the microscope PC and on the Gatan PC.
 @author: Peter Ercius, Alex Pattison, Morgan Wall, Stephanie Ribet
 """
 
+fromk pathlib import Path
 import io
 import base64
+import argparse
+import time
+from datetime import datetime, timedelta
+from typing import Any, Optional
 
 import pickle
-import time
 import numpy as np
 import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
+<<<<<<< Updated upstream
 from fastmcp.resources import FileResource
 from pathlib import Path
 from fastmcp.utilities.types import Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
+=======
+# import fastmcp.utilities.types.Image as mcpImage
+>>>>>>> Stashed changes
 
 import requests
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from requests.exceptions import HTTPError, RequestException
-import argparse
+
+import h5py
+import mfid
 
 mcp = FastMCP("TEAM05_Controller")
 
@@ -39,11 +49,151 @@ import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
 
+<<<<<<< Updated upstream
 
 mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.txt")))
 
 
 
+=======
+def get_metadata():
+    """ Get metadata from the microscope"""
+    d = {'type': 'get_metadata'}
+    Response = microscope_client.send_traffic(d)
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
+
+def create_dims(dataTop, exType, pix):
+    """ Create dims for the EMD file."""
+    if exType == 'single':
+        dim2 = dataTop.create_dataset('dim2',(pix,),'f')
+        dim2.attrs['name'] = 'X'
+        dim2.attrs['units'] = 'n_m'
+        dim1 = dataTop.create_dataset('dim1',(pix,),'f')
+        dim1.attrs['name'] = 'Y'
+        dim1.attrs['units'] = 'n_m'
+        #dims = (dim1,dim2)
+    elif exType == 'focalseries':
+        if self.numPerDF > 1:
+            dim4 = dataTop.create_dataset('dim4',(pix,),'f')
+            dim4.attrs['name'] = np.string_('X')
+            dim4.attrs['units'] = np.string_('n_m')
+            dim3 = dataTop.create_dataset('dim3',(pix,),'f')
+            dim3.attrs['name'] = np.string_('Y')
+            dim3.attrs['units'] = np.string_('n_m')
+        else:
+            dim3 = dataTop.create_dataset('dim3', (pix,), 'f')
+            dim3.attrs['name'] = np.string_('X')
+            dim3.attrs['units'] = np.string_('n_m')
+            dim2 = dataTop.create_dataset('dim2', (pix,), 'f')
+            dim2.attrs['name'] = np.string_('Y')
+            dim2.attrs['units'] = np.string_('n_m')
+    else:
+        dim3 = dataTop.create_dataset('dim3',(pix,),'f')
+        dim3.attrs['name'] = np.string_('X')
+        dim3.attrs['units'] = np.string_('n_m')
+        dim2 = dataTop.create_dataset('dim2',(pix,),'f')
+        dim2.attrs['name'] = np.string_('Y')
+        dim2.attrs['units'] = np.string_('n_m')
+        
+    if exType == 'drift':
+        dim1 = dataTop.create_dataset('dim1',(self.Rep,),'f')
+        dim1.attrs['name'] = np.string_('STEM rotation')
+        dim1.attrs['units'] = np.string_('deg')
+    elif exType == 'timeseries':
+        dim1 = dataTop.create_dataset('dim1',(self.Rep,),'f')
+        dim1.attrs['name'] = np.string_('time')
+        dim1.attrs['units'] = np.string_('sec')
+    elif exType == 'focalseries':
+        if self.numPerDF > 1:
+            dim1 = dataTop.create_dataset('dim1',(self.numDF,),'f')
+            dim1.attrs['name'] = np.string_('defocus')
+            dim1.attrs['units'] = np.string_('n_m')
+            dim2 = dataTop.create_dataset('dim2',(self.numPerDF,),'f')
+            dim2.attrs['name'] = np.string_('')
+            dim2.attrs['units'] = np.string_('')
+        else:
+            dim1 = dataTop.create_dataset('dim1',(self.numDF,),'f')
+            dim1.attrs['name'] = np.string_('defocus')
+            dim1.attrs['units'] = np.string_('n_m')
+
+    return 1
+
+def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=''):
+    with h5py.File(file_path, 'w') as f:
+        sh = data.shape
+        microscope_name = 'TEAM 0.5'
+        md = get_metadata()
+        
+        dataroot = f.create_group('/data')
+        
+        # Initialize the data set
+        dataTop = dataroot.create_group('single')
+        dset = dataTop.create_dataset('data', sh, data.dtype)
+        
+        # Create the EMD dimension datasets
+        _ = create_dims(dataTop, 'single', sh[0])
+        
+        microscope = f.create_group('microscope')
+        microscope.attrs['microscope name'] = 'TEAM 0.5'
+        microscope.attrs['high tension'] = md['high tension']
+        microscope.attrs['spot size index'] = md['spot size index']
+        microscope.attrs['magnification'] = md['magnification']
+        microscope.attrs['defocus'] = md['defocus']
+        microscope.attrs['convergence angle'] = md['convergence angle']
+        microscope.attrs['camera length'] = md['camera length']
+        microscope.attrs['stage position'] = md['stage position']
+
+        user = f.create_group('user')
+        user.attrs['user name'] = user_name
+        
+        sample = f.create_group('sample')
+        sample.attrs['sample name'] = sample_name
+        
+        #dataroot = f['data']
+        #dataTop = dataroot['single']
+        dims = [dataTop['dim1'], dataTop['dim2']]
+            
+        #dset = dataTop['data']
+        
+        imageShape = data.shape[-2:]
+        xdim = np.linspace(0,(imageShape[0]-1)*calX*1e9,imageShape[0]) #multiply by 1e9 for nanometers
+        ydim = np.linspace(0,(imageShape[1]-1)*calY*1e9,imageShape[1])
+        dims[-1][:] = xdim
+        dims[-2][:] = ydim
+        
+        # Add as attribute so loading in Fiji provides pixel size
+        # Note: Must be 3D so set the first element to 1
+        fiji_element_size = (1, calY*1e6, calX*1e6)
+        
+        # Create dimension scales and attach them
+        #for ii, d in enumerate(dims):
+        #    d.make_scale(name=d.attrs['name'])
+        #    dataTop.dims[ii].attach_scale(d)
+        
+        dset[:] = data
+        
+        # Create an attribute for easy loading into Fiji using HDF5 import
+        dset.attrs['element_size_um'] = np.asarray(fiji_element_size).astype(np.float32)
+        #print('Fiji attribute added = {}'.format(fiji_element_size))
+                    
+        # OR Write element size for simple Fiji loading (1, 1, y, x)
+        # if len(dims) == 3:
+        #    dset.attrs['element_size_um'] = (1.0, 
+        #                                      self.calY*1e6, self.calX*1e6)
+        # if len(dims) == 4:
+        #    dset.attrs['element_size_um'] = (1.0, 1.0, 
+        #                                     self.calY*1e6, self.calX*1e6)
+        
+        # Set the data as a valid EMD data set version 0.1
+        dataTop.attrs['version_major'] = 0
+        dataTop.attrs['version_minor'] = 1
+        dataTop.attrs['emd_group_type'] = 1
+        
+>>>>>>> Stashed changes
 @mcp.tool()
 def calculate_optimal_defocus(
     convergence_angle:float,
@@ -241,6 +391,11 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     image_min = image.min()
     image_max = image.max()
     image_std = image.std()
+    
+    new_id = mfid.mfid()
+    dir_path = Path('D:/user_data/Claude')
+    file_path = dir_path / Path(new_id[0])
+    write_emd_data(str(file_path), data, calX, calY, user_name='Claude', sample_name='')
     
     return (calx, caly, cal_unit_name, image_min, image_max, image_std)
 
@@ -890,6 +1045,13 @@ if __name__ == "__main__":
     #print(get_defocus())
     #print(set_defocus())
 
+    # Testing
+    print(get_metadata())
+    
+    import numpy as np
+    aa = np.random.rand(100,100)
+    writeEMDdata('d:/test.emd', aa, 0.1, 0.1, user_name='Claude', sample_name='nada')
+    
     #print('Note: MCP run command commented out.')
-    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    #mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
