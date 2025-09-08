@@ -39,9 +39,9 @@ from GUI_Client import BEACON_Client
 
 @mcp.tool()
 def calculate_optimal_defocus(
-    convergence_angle,
-    reciprocal_sampling,
-    overlap = 85,
+    convergence_angle:float,
+    reciprocal_sampling:float,
+    overlap = 85:float,
 ):
     """
     Calculates the optimal defocus and step size for a defocused
@@ -52,7 +52,7 @@ def calculate_optimal_defocus(
     Parameters
     ----------
     convergence_angle : float
-        specified in mrad
+        specified in miliradians
 
     reciprocal sampling : float
         specified in inverse angstroms
@@ -230,7 +230,7 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     if Response is None:
         raise Exception('Command failed.')
     
-    (calx, caly, cal_unit_name) = Response['reply_data']
+    (image, calx, caly, cal_unit_name) = Response['reply_data']
     image_min = image.min()
     image_max = image.max()
     image_std = image.std()
