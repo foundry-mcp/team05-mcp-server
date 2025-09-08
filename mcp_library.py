@@ -19,6 +19,8 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
+from fastmcp.resources import FileResource
+from pathlib import Path
 #import fastmcp.utilities.types.Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
@@ -36,6 +38,11 @@ mcp = FastMCP("TEAM05_Controller")
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
+
+
+mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.txt")))
+
+
 
 @mcp.tool()
 def calculate_optimal_defocus(
