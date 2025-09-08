@@ -474,7 +474,7 @@ def _focusing(df_range:float=1000e-9):
        to nanometers to send to the BEACON_Server. 
        
        This function is used by `focusing()` and `registration()`"""
-    range_dict = {'C1': [-df_range*1e9, df_range*1e9]}
+    range_dict = {'C1': [-df_range*1e9, df_range*1e9]} # convert to nanometers
 
     init_size_value = 5
     runs_value = 10
