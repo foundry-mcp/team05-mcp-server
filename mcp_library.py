@@ -9,7 +9,7 @@ the microscope PC and on the Gatan PC.
 @author: Peter Ercius, Alex Pattison, Morgan Wall, Stephanie Ribet
 """
 
-fromk pathlib import Path
+from pathlib import Path
 import io
 import base64
 import argparse
@@ -23,15 +23,12 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
-<<<<<<< Updated upstream
+
 from fastmcp.resources import FileResource
 from pathlib import Path
 from fastmcp.utilities.types import Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
-=======
-# import fastmcp.utilities.types.Image as mcpImage
->>>>>>> Stashed changes
 
 import requests
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict
@@ -49,13 +46,8 @@ import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
 
-<<<<<<< Updated upstream
+#mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.txt")))
 
-mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.txt")))
-
-
-
-=======
 def get_metadata():
     """ Get metadata from the microscope"""
     d = {'type': 'get_metadata'}
@@ -192,8 +184,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         dataTop.attrs['version_major'] = 0
         dataTop.attrs['version_minor'] = 1
         dataTop.attrs['emd_group_type'] = 1
-        
->>>>>>> Stashed changes
+
 @mcp.tool()
 def calculate_optimal_defocus(
     convergence_angle:float,
@@ -1046,12 +1037,12 @@ if __name__ == "__main__":
     #print(set_defocus())
 
     # Testing
-    print(get_metadata())
+    #print(get_metadata())
     
-    import numpy as np
-    aa = np.random.rand(100,100)
-    writeEMDdata('d:/test.emd', aa, 0.1, 0.1, user_name='Claude', sample_name='nada')
+    #import numpy as np
+    #aa = np.random.rand(100,100)
+    #write_emd_data('d:/test.emd', aa, 0.1, 0.1, user_name='Claude', sample_name='nada')
     
     #print('Note: MCP run command commented out.')
-    #mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
