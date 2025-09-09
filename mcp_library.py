@@ -354,7 +354,11 @@ def move_stage_delta(dX:float=0, dY:float=0, dZ:float=0, dA:float=0, dB:float=0)
 def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     '''
     Acquire HAADF-STEM image. A tuple is returned with information 
-    about the image. 
+    about the image. The image is saved to disk as a Berkeley
+    EMD file at the file path returned from this function.
+    
+    TODO: add dwell time to metadata!
+    TODO: Use a dictionary to return and add contect to data returned
     
     Parameters
     ----------
@@ -366,9 +370,9 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     
     Returns
     -------
-    : tuple (float, float, string, float, float, float)
-        The tuple is made of 6 elements. The description of the elements are 
-        (x pixel calibration, y pixel calibration, the calibration unit name,
+    : tuple (str, float, float, string, float, float, float)
+        The tuple is made of 7 elements. The description of the elements are 
+        file path, (x pixel calibration, y pixel calibration, the calibration unit name,
         the image minimum, the image maximum, and the image standard deviation).
     '''
     
@@ -388,7 +392,11 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     file_path = dir_path / Path(f'{new_id[0]}.emd')
     write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
     
-    return (calx, caly, cal_unit_name, image_min, image_max, image_std)
+    return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
+
+def load_data(file_path):
+    """Load an EMD data set from a file path"""
+    pass
 
 @mcp.tool()
 def get_mag():
@@ -516,6 +524,7 @@ def set_camera_length_index(CL_index:int):
     '''
     Set the STEM camera length index value.
     The names of several common index values are as follows:
+    CL_index == 4 is 68 mm
     CL_index == 5 is 85 mm
     CL_index == 6 is 105 mm
 
@@ -620,7 +629,7 @@ def registration(refImage:npt.NDArray, curImage:npt.NDArray, pixelSize:float):
     #print(offset_xy)
     return offset_xy
 
-def _focusing(df_range:float=1000e-9):
+def _focusing(df_range:float=100e-9):
     """df_range is in meters. This function converts
        to nanometers to send to the BEACON_Server. 
        
@@ -666,7 +675,7 @@ def _focusing(df_range:float=1000e-9):
     print('end _focusing')
 
 @mcp.tool()
-def focusing(df_range:float=1000e-9):
+def focusing(df_range:float=100e-9):
     '''
     Performs autofocusing using BEACON. This is a Bayesian optimization 
     routine which searches with the specified range for the best
@@ -677,7 +686,7 @@ def focusing(df_range:float=1000e-9):
     ----------
     df_range : float
         Maximum values plus and minus from the current defocus to 
-        search. The default is 1000e-9 meters.
+        search. The default is 100e-9 meters.
 
     Returns
     -------
@@ -1028,7 +1037,7 @@ if __name__ == "__main__":
     ghost = '192.168.0.30'
     gport = 13579
 
-    gatan_client = Gatan_Client(ghost, gport) # communicatse with the Gatan PC
+    gatan_client = Gatan_Client(ghost, gport) # communicates with the Gatan PC
 
     # Get some initial settings to test things out
     #print('TODO: REMOVE THESE AFTER TESTING')
