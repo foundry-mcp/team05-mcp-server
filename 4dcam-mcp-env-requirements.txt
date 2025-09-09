@@ -1,0 +1,4 @@
+gradio
+ipywidgets==8.1.7
+git+https://github.com/MolecularFoundryCrucible/pycrucible.git
+
