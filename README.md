@@ -7,8 +7,11 @@ The set of MCP tools made available. This should be run on the support PC and ha
 # microscope_server.py
 The zeroMQ based server that communicates with the mciroscope scritping interface, the CEOS RPC gateway (for aberration correction), and the TIA (ESVision) STEM acquisition software.
 
-# gatan_server.py (to be added)
-The zeroMQ based server that communicates with the Gatan Digital Micrograph software on the Gatan PC. This server is based on the "mulitscan_server" and not in the repo yet.
+# gatan_server.py
+The zeroMQ based server that communicates with the Gatan Digital Micrograph software on the Gatan PC. This server writes templated .s scripts and executes them in DM. It relies on the dm_script.py and mb_script.py to write the templates.
 
 # mcp_distiller.py
 A mcp agent that can get data from the Distiller database. You can get a range of scan_ids or data from a specific data set id.
+
+# 4Dcamera_commands_mcp.py
+This can communicate with the 4D Camera backend. Its useful for getting and setting the tmemperature and other various commands. It is designed for troublehsooting and maintenance, not experiments.
