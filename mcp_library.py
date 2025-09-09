@@ -46,7 +46,12 @@ import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
 
-#mcp.add_resource("TEAM05_parameters", FileResource(Path("./TEAM0.5_parameters.txt")))
+@mcp.resource("file://TEAM0.5_parameters.txt", mime_type="text/plain")
+def get_team05_parameter_configurations():
+    with open('TEAM0.5_parameters.txt', mode="r") as f:
+        info = f.read()
+        return info
+
 
 def get_metadata():
     """ Get metadata from the microscope"""
