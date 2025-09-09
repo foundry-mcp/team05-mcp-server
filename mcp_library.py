@@ -1041,22 +1041,9 @@ if __name__ == "__main__":
     # Gatan PC connection settings
     ghost = '192.168.0.30'
     gport = 13579
-
+    
     gatan_client = Gatan_Client(ghost, gport) # communicates with the Gatan PC
 
-    # Get some initial settings to test things out
-    #print('TODO: REMOVE THESE AFTER TESTING')
-    #print(get_voltage())
-    #print(get_defocus())
-    #print(set_defocus())
-
-    # Testing
-    #print(get_metadata())
-    
-    #import numpy as np
-    #aa = np.random.rand(100,100)
-    #write_emd_data('d:/test.emd', aa, 0.1, 0.1, user_name='Claude', sample_name='nada')
-    
-    #print('Note: MCP run command commented out.')
+    #print('Note: MCP run command commented out.') # for testing
     mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
