@@ -9,7 +9,7 @@ This currently is started using the gpcam_311 conda envireonment on the support 
 # microscope_server.py
 The zeroMQ based server that communicates with the mciroscope scritping interface, the CEOS RPC gateway (for aberration correction), and the TIA (ESVision) STEM acquisition software.
 
-We are using the BEACON server on the team 0.5 computer for this. "microscope_server.py" is mostly a copy of that with some more recent modifications.
+This is run on the team 0.5 microscope PC usoing the winpython 3.4 command prompt.
 
 # gatan_server.py
 The zeroMQ based server that communicates with the Gatan Digital Micrograph software on the Gatan PC. This server writes templated .s scripts and executes them in DM. It relies on the dm_script.py and mb_script.py to write the templates.
