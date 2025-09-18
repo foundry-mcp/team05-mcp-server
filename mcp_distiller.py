@@ -284,7 +284,7 @@ def put_note_test(distiller_scan_id: int, note: str):
 
 if __name__ == "__main__":
     mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8081)
-    #mcp.run(transport="sse", host="131.243.3.204", port="8080")
+    #mcp.run(transport = "sse", host = "127.0.0.1", port = 8081)
     
     # Test getting information from Distiller
     #aa = get_scan_by_id_test(distiller_scan_id=35249)
