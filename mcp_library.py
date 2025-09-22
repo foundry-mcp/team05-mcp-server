@@ -241,7 +241,19 @@ def team05_greet_me(username):
 # Microscope (BEACON) server commands
 @mcp.tool()
 def acquire_ceos_tableau():
+    """ Acquire a tableau. Hard coded to fast with 18 mrad."""
     d = {'type': 'tableau'}
+    Response = microscope_client.send_traffic(d)
+    if Response['reply_data'] is None:
+        raise Exception('Command failed.')
+    else:
+        reply_data = Response['reply_data']
+        return reply_data
+
+@mcp.tool()        
+def acquire_c1a1(WD_x=0.0, WD_y=0.0):
+    """ Tilt and acquire a C1A1 measurement. WD is in mrad."""
+    d = {'type': 'c1a1', 'ab_values':{'WD_x':WD_x, 'WD_y':WD_y}}
     Response = microscope_client.send_traffic(d)
     if Response['reply_data'] is None:
         raise Exception('Command failed.')

@@ -148,9 +148,9 @@ class CorrectorCommands():
         """
         return self.communicate('measureC1A1')
     
-    def acquireTableau(self, angle, tabType='fast', maxFit='B2'):
+    def acquireTableau(self, angle=18, tabType='fast', maxFit='B2'):
         """
-        Acquire a tableau
+        Acquire a tableau. angle is in mradians
         """
         params = {'tabType': tabType,
                   'angle': angle}
@@ -593,6 +593,9 @@ class BEACON_Server():
             if instruction == 'ping':
                 reply_message = 'pinged'
                 reply_data = None
+            elif instruction == 'c1a1':
+                reply_message = 'c1a1 measured'
+                reply_data = self.c1a1_measurement()
             elif instruction == 'tableau':
                 reply_message = 'tableau measured'
                 reply_data = self.tableau_measurement()
@@ -993,14 +996,16 @@ class BEACON_Server():
         else:
             return qval
     
-    def tableau_measurement(self):
+    def c1a1_measurement(self):
         '''
-        Takes C1A1 measurement at a given beam tilt (information contained in self.d dictionary) and returns the C1A1
+        Takes a defocus (C1) and 2-fold astigmatism (A1) measurement with the beam tilted.
+        The beam tilt is encoded in the WD x and y values in the aberration dictionary.
+        WD values are in radians.
         
         Returns
         -------
-        c1a1 : float
-            C1/A1 measurements.
+        : dict
+        A dictionary containing the signal, C1, and A1 measurements
         '''
         
         if self.d is None:
@@ -1011,10 +1016,13 @@ class BEACON_Server():
         
         print(ab_values)
         
+        # Set the tilt angle
         self.corrector.correctAberration(name='WD', value=[ab_values['WD_x'], ab_values['WD_y']], select=None)
+        # Acquire C1A1
         self.microscope.unblank()
-        c1a1 = self.corrector.ceos_corrector.measureC1A1()
+        c1a1 = self.corrector.measureC1A1()
         self.microscope.blank()
+        # Rest the tilts to 0
         self.corrector.correctAberration(name='WD', value=[-ab_values['WD_x'], -ab_values['WD_y']], select=None)
         
         c1a1_dict = json.loads(c1a1[0].decode('utf-8'))['result']['aberrations']
@@ -1022,6 +1030,29 @@ class BEACON_Server():
         print(c1a1_dict)
         
         return c1a1_dict
+        
+    def tableau_measurement(self):
+        '''
+        Takes a tabelau with the given maximum tilt angle in milliradians and type.
+        The posisble types are fast, standard, and enhanced.
+        
+        This currently only takes a fast tabelau with 18 mrad
+        
+        Returns
+        -------
+        : dict
+        The aberation values.
+        '''
+        
+        self.microscope.unblank()
+        c1a1 = self.corrector.acquireTableau()
+        self.microscope.blank()
+        
+        tableau_dict = json.loads(c1a1[0].decode('utf-8'))['result']['aberrations']
+        
+        print(tableau_dict)
+        
+        return tableau_dict
     
 if __name__ == '__main__':
     
