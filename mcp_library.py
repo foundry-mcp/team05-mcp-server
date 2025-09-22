@@ -949,7 +949,7 @@ class Microscope_Client():
     def __init__(self, host='192.168.0.24', port=7001):
         try:
             # Set timeout in milliseconds
-            timeout_ms = 50000  # 5 seconds
+            timeout_ms = 5000  # 5 seconds
             context = zmq.Context()
             self.ClientSocket = context.socket(zmq.REQ)
             self.ClientSocket.setsockopt(zmq.RCVTIMEO, timeout_ms)
@@ -990,7 +990,7 @@ class Gatan_Client():
     def __init__(self, host='192.168.0.30', port=13579):
         try:
             # Set timeout in milliseconds
-            timeout_ms = 50000  # 5 seconds
+            timeout_ms = 5000  # 5 seconds
             context = zmq.Context()
             self.ClientSocket = context.socket(zmq.REQ)
             self.ClientSocket.setsockopt(zmq.RCVTIMEO, timeout_ms)
