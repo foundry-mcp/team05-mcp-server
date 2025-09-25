@@ -646,7 +646,7 @@ def registration(refImage:npt.NDArray, curImage:npt.NDArray, pixelSize:float):
     #print(offset_xy)
     return offset_xy
 
-def _focusing(df_range:float=100e-9):
+def _focusing(df_range:float=500e-9):
     """df_range is in meters. This function converts
        to nanometers to send to the BEACON_Server. 
        
@@ -654,11 +654,11 @@ def _focusing(df_range:float=100e-9):
     range_dict = {'C1': [-df_range*1e9, df_range*1e9]} # convert to nanometers
 
     init_size_value = 5
-    runs_value = 10
+    runs_value = 5
     func_value = 'ucb'
 
     dwell_value = 3e-6
-    shape_value = (512,512)
+    shape_value = (256, 128)
     offset_value = (0, 0)
     metric_value = 'normvar'
 
@@ -692,7 +692,7 @@ def _focusing(df_range:float=100e-9):
     print('end _focusing')
 
 @mcp.tool()
-def focusing(df_range:float=100e-9):
+def focusing(df_range:float=500e-9):
     '''
     Performs autofocusing using BEACON. This is a Bayesian optimization 
     routine which searches with the specified range for the best
@@ -703,7 +703,7 @@ def focusing(df_range:float=100e-9):
     ----------
     df_range : float
         Maximum values plus and minus from the current defocus to 
-        search. The default is 100e-9 meters.
+        search. The default is 500e-9 meters.
 
     Returns
     -------
