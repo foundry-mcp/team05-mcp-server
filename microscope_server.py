@@ -683,6 +683,9 @@ class BEACON_Server():
             elif instruction == 'set_stem_rotation':
                 reply_message = 'set stem rotation'
                 reply_data = self.microscope.set_stem_rotation(self.d['stem_rotation'])
+            elif instruction == 'get_metadata':
+                reply_message = 'get metadata'
+                reply_data = self.get_metadata()
             else:
                 reply_message = None # TODO: Test if this can be a message back indicating unknown instruction
                 reply_data = None
@@ -1053,6 +1056,18 @@ class BEACON_Server():
         print(tableau_dict)
         
         return tableau_dict
+    
+    def get_metadata(self):
+        md = {}
+        md['microscope name'] = "TEAM 0.5"
+        md['high tension'] = self.microscope._microscope.Gun.HTValue
+        md['spot size index'] = self.microscope.Ill.SpotsizeIndex
+        md['magnification'] = self.microscope.Ill.StemMagnification
+        md['defocus'] = self.microscope.Ill.ProbeDefocus
+        md['convergence angle'] = self.microscope.Ill.ConvergenceAngle
+        md['camera length'] = self.microscope.Proj.CameraLength
+        md['stage position'] = self.microscope.get_stage_pos()
+        return md
     
 if __name__ == '__main__':
     
