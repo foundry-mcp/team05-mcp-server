@@ -20,6 +20,7 @@ from requests.exceptions import HTTPError, RequestException
 import ncempy
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm, NoNorm
 import mfid
 
 data = {} # a dictionary that holds all the data.
@@ -33,7 +34,8 @@ class ProcessPlotter:
         self.pipe, plotter_pipe = mp.Pipe()
         self.plot_process = mp.Process(target=self._plot_process, args=(plotter_pipe,))
         self.plot_process.start()
-
+        
+        
     def _plot_process(self, pipe):
         self.fig, self.ax = plt.subplots()
         self.ax.set_title("Dynamic Plot")
@@ -96,6 +98,24 @@ def load_image(directory:str, file_name:str):
     return file_id[0]
 
 @mcp.tool()
+def list_data_files(directory:str):
+    """A function that lists the data files available on the server
+    in the directory indicated.
+    
+    Parameters
+    ----------
+    directory : str
+    The directory where the data is located
+    
+    Returns
+    -------
+    : list
+    A list of full file paths as strings.
+    """
+    dir_path = Path(directory)
+    return [str(ii) for ii in dir_path.glob('*.*')]
+
+@mcp.tool()
 def get_statistics(file_id:str):
     """Caclulates the statistics of the image intensities.
     
@@ -139,6 +159,7 @@ def plot_data_fft(file_id:str):
     """
     print('plotting fft')
     plotter.plot(np.log(np.abs(np.fft.fftshift(np.fft.fft2(data[file_id]['data'])))))
+    
 
 @mcp.tool()
 def get_loaded_data():
@@ -173,6 +194,7 @@ def get_emd_metadata(directory:str, file_name:str):
         md.update(f0.microscope.attrs)
         md.update(f0.sample.attrs)
         md.update(f0.user.attrs)
+
     return md
     
 @mcp.tool()
@@ -212,4 +234,5 @@ if __name__ == "__main__":
     # This allows the server side to show data as images
     plotter = ProcessPlotter()
     
-    mcp.run(transport="sse", host="127.0.0.1", port=8081)
+    # mcp.run(transport="sse", host="127.0.0.1", port=8082)
+    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port=8082)
