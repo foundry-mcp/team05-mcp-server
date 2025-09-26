@@ -646,23 +646,64 @@ def registration(refImage:npt.NDArray, curImage:npt.NDArray, pixelSize:float):
     #print(offset_xy)
     return offset_xy
 
-def _focusing(df_range:float=500e-9):
-    """df_range is in meters. This function converts
-       to nanometers to send to the BEACON_Server. 
-       
-       This function is used by `focusing()` and `registration()`"""
+@mcp.tool()
+def focus_stem_image(df_range:float=500e-9, num_seed_values:int=5,
+                     num_samples:int=5, dwell_time:float=3e-6,
+                     image_shape:tuple=(256, 256), noise_level:float=1e-4):
+    '''
+    Performs autofocusing using BEACON. This is a Bayesian optimization 
+    routine which searches with the specified range for the best
+    focus using the Upper Confidence Bound method. The best focus is 
+    set on the microscope automatically.
+
+    Parameters
+    ----------
+    df_range : float
+        Maximum values plus and minus from the current defocus to 
+        search. The range is in meters.
+    num_seed_values : int
+        The number of initial focus values to use to seed the surrogate model.
+    num_samples : int
+        The number of samples to acquire to estimate the optimal focus
+    dwell_time : float
+        The dwell time of the STEM images used in focusing. The dwell time is in
+        seconds and a typical range of values is 1-10e-6 seconds.
+    image_shape : tuple
+        A tuple with two values that are the width and height of the STEM images
+        to acquire at each focus. The standard deviation will be used in the Bayesian
+        optimization routine. 
+    noise_level : float
+        The expected amount of noise in the image. A good estimate is the standard
+        deviation of an image of the regiong to be used for focusing. Typical values are
+        ~1e-4 for HAADF_STEM images and the value is unitless.
+    
+    
+    Notes
+    -----
+    The image shape can be non-square. The width is the fast scan direction and the height
+    is the slow scan direction. To speed things up is is recommneded to reduce the height. 
+    Also, if doing tomography it is often advantageous to focusin the center of the image. 
+    Reducing the height to 1/2 the width will acquire the image near the center.
+    
+    
+    Returns
+    -------
+    : str
+        A string that the focusing finished.
+
+    '''
     range_dict = {'C1': [-df_range*1e9, df_range*1e9]} # convert to nanometers
 
-    init_size_value = 5
-    runs_value = 5
-    func_value = 'ucb'
-
-    dwell_value = 3e-6
-    shape_value = (256, 128)
-    offset_value = (0, 0)
+    init_size_value = num_seed_values
+    runs_value = num_samples
+    dwell_value = dwell_time
+    shape_value = image_shape
+    noise_level = noise_level 
+    
     metric_value = 'normvar'
-
-    return_images = True
+    offset_value = (0, 0) # not used
+    func_value = 'ucb' # always use upper confidence bound method
+    return_images = True # this has to be True. Not sure why.
     bscomp = False
     ccorr = True
 
@@ -680,7 +721,7 @@ def _focusing(df_range:float=500e-9):
                           C1_defocus_flag=True,
                           ab_select=None,
                           #custom_ucb_factor=3,
-                          noise_level=1e-4)
+                          noise_level=noise_level)
 
     mm = beacon_client.model_max
     ab_keys = beacon_client.ab_keys
@@ -689,16 +730,18 @@ def _focusing(df_range:float=500e-9):
         ab_values[ab_keys[i]] = mm[i] * 1e-9 # convert to meters
 
     beacon_client.ab_only(ab_values)
-    print('end _focusing')
+    print('Focusing finished.')
 
-@mcp.tool()
+#@mcp.tool()
 def focusing(df_range:float=500e-9):
     '''
     Performs autofocusing using BEACON. This is a Bayesian optimization 
     routine which searches with the specified range for the best
     focus. The best focus is set on the microscope automatically.
     The df_range is the focal range to serch in meters.
-
+    
+    DEPRECATED
+    
     Parameters
     ----------
     df_range : float
@@ -717,26 +760,26 @@ def focusing(df_range:float=500e-9):
     return 'Focusing finished.'
     
 
-def centering(refImage:npt.NDArray, xymax:float=100e-9, ntries:int=4, df_range:float=None, 
-              cal_factor:float=1.0, dwell_search:float=2e-6, size_search:int=256):
+def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries:int=4,
+                  image_stage_cal_factor:float=1.0, dwell_search:float=2e-6, size_search:int=256):
     '''
-    Center the image on the position shown in the reference image. This uses crosscorrelation 
-    to move the stage such that microscope is centered on the objects in the reference image.
+    This acquires an image at the current stage position. It then calculates the crosscorrelation
+    between the reference image and that image. The microscope moves the stage to center the
+    region on teh reference image and this continues iteratively. Either the object is centered 
+    to within the xymax tolerance or ntries is exceeded.
     
     Parameters
     ----------
-    refImage : numpy.ndarray
-        Image of target area.
-    xymax : float, optional
-        Maximum acceptable offset between actual and target position. The default is 100e-9 meters.
+    reference_image : numpy.ndarray
+        Reference image to center on.
+    max_distance : float, optional
+        Maximum acceptable offset between actual and target position.
     ntries : int, optional
-        Number of attempts to center the image. The default is 4 tries.
-    df_range : float, optional
-        Defocus range for autofocusing in meters. The default is None. If None then no autofocusing is performed.
-    cal_factor : float, optional
-        Calibrate stage movement to image resolution. The default is 1.0.
+        Number of attempts to center the image.
+    image_stage_cal_factor : float, optional
+        Ratio of stage movement calibration to image resolution. The default is 1.0.
     dwell_search : float, optional
-        Dwell time in seconds. The default is 2e-6.
+        Dwell time in seconds.
     size_search : int, optional
         Image size in pixels. The image will be square. The default is 256.
 
@@ -750,28 +793,27 @@ def centering(refImage:npt.NDArray, xymax:float=100e-9, ntries:int=4, df_range:f
     None.
 
     '''
-    NOT_CENTERED = True
-    
-    while NOT_CENTERED and ntries > 0:
-        if df_range is not None:
-            _focusing(df_range)
+    for range(ntries):
         
         curImage, pixelSize = acquire_image(dwell_search, size_search)
         
-        offset = registration(refImage, curImage, pixelSize) # Perform registration
-        print('offset = ', offset) # for debugging
-        if abs(offset[0]) > xymax or abs(offset[1]) > xymax: # Move if needed
-            ntries +=-1
-            move_stage_delta(dX=offset[0]*cal_factor, dY=offset[1]*cal_factor) # y may need -ve sign depending on which side of the horizontal axis it's on!!! Need to look into this!
+        offset = registration(reference_image, curImage, pixelSize) # Perform registration
+        print(f'offset = {offset}') # for debugging
+        dist = np.sqrt(offset[0]**2 + offset[1]**2)
+        if dist > max_distance:
+            # Move if needed
+            ntries += 1
+            # y may need -ve sign depending on which side of the horizontal axis it's on!!! Need to look into this!
+            move_stage_delta(dX=offset[0]*image_stage_cal_factor, dY=offset[1]*image_stage_cal_factor) 
             time.sleep(1)
         else:
-            NOT_CENTERED = False
-            print('Centered')
+            print('Region centered on reference image')
+            break
     
     if NOT_CENTERED and ntries <= 0:
-        d = {'type': 'close_column_valve'}
-        microscope_client.send_traffic(d)
-        print('Closing column valve')
+        #d = {'type': 'close_column_valve'}
+        #microscope_client.send_traffic(d)
+        #print('Closing column valve')
         raise ValueError('Number of attempts to center has exceeded ntries')
 
 @mcp.tool()
