@@ -794,7 +794,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
     None.
 
     '''
-    for range(ntries):
+    for ii in range(ntries):
         
         curImage, pixelSize = acquire_image(dwell_search, size_search)
         
@@ -803,7 +803,6 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
         dist = np.sqrt(offset[0]**2 + offset[1]**2)
         if dist > max_distance:
             # Move if needed
-            ntries += 1
             # y may need -ve sign depending on which side of the horizontal axis it's on!!! Need to look into this!
             move_stage_delta(dX=offset[0]*image_stage_cal_factor, dY=offset[1]*image_stage_cal_factor) 
             time.sleep(1)
@@ -820,19 +819,26 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
 @mcp.tool()
 def get_screenshot():
     '''
-    Take a screenshot of the microscope GUI.
+    Take a screenshot of the microscope GUI. The original PNG is saved on the 
+    server side and a smaller JPG version is returned.
     
     Returns
     -------
     : fastmcp.utilities.types.Image
-        The image as fastmcp Image from the utilities types module.
+        The image as fastmcp Image from the utilities types module. 
+        The format is a JPG.
     '''
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
+    
     image = Response['reply_data']
-    pillow_image = pilImage(image)
-
-    return mcpImage(data=pillow_image.tobytes(), format="png")
+    image.save(r'd:\user_data\claude_image.png')
+    original_width, original_height = image.size
+    new_size = (original_width//2, original_height//2)
+    resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
+    resized_image.save(r'd:\user_data\claude_image2.jpg')
+    
+    return mcpImage(r'd:\user_data\claude_image2.jpg')
 
 @mcp.tool()
 def blank_beam():
