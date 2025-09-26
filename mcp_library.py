@@ -23,6 +23,7 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
+from fastmcp.utilities.types import Image as mcpImage
 
 from fastmcp.resources import FileResource
 from pathlib import Path
@@ -763,10 +764,10 @@ def focusing(df_range:float=500e-9):
 def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries:int=4,
                   image_stage_cal_factor:float=1.0, dwell_search:float=2e-6, size_search:int=256):
     '''
-    This acquires an image at the current stage position. It then calculates the crosscorrelation
-    between the reference image and that image. The microscope moves the stage to center the
-    region on teh reference image and this continues iteratively. Either the object is centered 
-    to within the xymax tolerance or ntries is exceeded.
+    This acquires an image at the current stage position. It then calculates the cross-correlation
+    between the reference image and the current image. The microscope moves the stage to center the
+    region on the reference image and this continues iteratively. Either the object is centered 
+    to within the max_distance tolerance or ntries is exceeded.
     
     Parameters
     ----------
@@ -814,7 +815,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
         #d = {'type': 'close_column_valve'}
         #microscope_client.send_traffic(d)
         #print('Closing column valve')
-        raise ValueError('Number of attempts to center has exceeded ntries')
+        raise ValueError('Number of attempts to center has exceeded ntries.')
 
 @mcp.tool()
 def get_screenshot():
@@ -823,8 +824,8 @@ def get_screenshot():
     
     Returns
     -------
-    : PIL.Image
-        The image a a PIL Image object.
+    : fastmcp.utilities.types.Image
+        The image as fastmcp Image from the utilities types module.
     '''
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
@@ -832,7 +833,6 @@ def get_screenshot():
     pillow_image = pilImage(image)
 
     return mcpImage(data=pillow_image.tobytes(), format="png")
-    #return pilImage(encoded_image)
 
 @mcp.tool()
 def blank_beam():
