@@ -48,7 +48,9 @@ class ProcessPlotter:
                     plt.close(self.fig)
                     break
                 self.ax.clear()
-                self.ax.imshow(data)
+                image = data[0]
+                norm = data[1]
+                self.ax.imshow(image, norm=norm)
                 self.fig.canvas.draw()
                 self.fig.canvas.flush_events() # Update the display
 
@@ -144,7 +146,9 @@ def plot_data(file_id:str):
     The file_id to use to access the data
     """
     print('plotting')
-    plotter.plot(data[file_id]['data'])
+    image = data[file_id]['data']
+    norm = 'linear'
+    plotter.plot((image, norm))
 
 @mcp.tool()
 def plot_data_fft(file_id:str):
@@ -158,7 +162,9 @@ def plot_data_fft(file_id:str):
     The file_id to use to access the data
     """
     print('plotting fft')
-    plotter.plot(np.log(np.abs(np.fft.fftshift(np.fft.fft2(data[file_id]['data'])))))
+    image = np.abs(np.fft.fftshift(np.fft.fft2(data[file_id]['data'])))
+    norm = 'log'
+    plotter.plot((image, norm))
     
 
 @mcp.tool()
@@ -194,7 +200,18 @@ def get_emd_metadata(directory:str, file_name:str):
         md.update(f0.microscope.attrs)
         md.update(f0.sample.attrs)
         md.update(f0.user.attrs)
-
+        
+        try: 
+            dims = f0.getDims()
+            pixel_size_x = dims[0][1] - dims[0][0]
+            pixel_size_y = dims[1][1] - dims[1][0]
+            
+            md['pixel_size_x'] = pixel_size_x
+            md['pixel_size_y'] = pixel_size_x
+            md['pixel_size_unit'] = dims[2].replace('_', '')
+        except:
+            print('cant get pixel size')
+        
     return md
     
 @mcp.tool()
