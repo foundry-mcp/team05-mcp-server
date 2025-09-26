@@ -794,6 +794,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
     None.
 
     '''
+    cenetered = False
     for ii in range(ntries):
         
         curImage, pixelSize = acquire_image(dwell_search, size_search)
@@ -808,9 +809,10 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
             time.sleep(1)
         else:
             print('Region centered on reference image')
+            cenetered = True
             break
     
-    if NOT_CENTERED and ntries <= 0:
+    if not centered:
         #d = {'type': 'close_column_valve'}
         #microscope_client.send_traffic(d)
         #print('Closing column valve')
