@@ -199,14 +199,21 @@ class MicroscopeControl():
         print('Column valves closed')
 
     def create_or_set_display_window(self, sizeX, sizeY):
-        """TIA needs a display window. This creates one specifically for the MicroscopeServer or makes it the active one if it exists."""
+        """TIA needs a display window. This creates one specifically for the MicroscopeServer or makes it the active one if it exists.
+        
+        alternate ways of doing this:
+        TIA.FindDisplayWindow(self.window_name)
+        TIA.FindDisplayObject("Server image/Image 1 Display/Image 1")
+        These return None if not found.
+        """
         self.window_name = 'Server image'
         winlist = self.TIA.DisplayWindowNames()
         found = False
         for ii in range(winlist.count):
             if winlist[ii] == self.window_name:
                 found = True
-                
+                break
+        
         if found:
             self.w2D = self.TIA.FindDisplayWindow(self.window_name)
             self.d1 = self.w2D.FindDisplay('Image 1 Display')
@@ -220,7 +227,8 @@ class MicroscopeControl():
             self.w2D.name = self.window_name
             self.d1 = self.w2D.addDisplay('Image 1 Display', 0,0,3,1)
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
-
+        TIA.ActivateDisplayWindow(self.window_name)
+        
     def get_mag(self):
         """Get the STEM magnification.
         
@@ -599,8 +607,32 @@ class MicroscopeControl():
 
 
 class MicroscopeServer():
-    def __init__(self, port, rpchost, rpcport, SIM=False, TEST=False, TIA=True, CEOS=True):
+    def __init__(self, port, rpchost=None, rpcport=None, SIM=False, TEST=False, TIA=True, CEOS=True):
+        """  A server that accepts strings. Each string is treated
+        as a command to set or get microscope settings or enact
+        some set of commands such as focusing.
         
+        Parameters
+        ----------
+        port : 
+        The port to open for the server. The server will bind
+        that port on all available interfaces.
+        rpchost : string, optional
+        The host name of the CEOS RPC gateway.
+        rpcport : int, optional
+        The port used by the CEOS rpc gateway.
+        SIM : bool
+        If True then simulation mode is enabled.
+        TEST : bool
+        Test mode. The instructions dictionary is a set of predefined
+        parameters
+        TIA : bool
+        Indicates where to connect to TIA (ESVision) or not.
+        CEOS : bool
+        Indicates whether to connect to the CEOS RPC gateway or not. The
+        host and port are also optional keywords.
+        
+        """
         self.SIM = SIM
         if not self.SIM:
             if CEOS:
@@ -1120,10 +1152,10 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    serverport = args.serverport
-    rpchost = args.rpchost
+    serverport = args.serverport # port for the server
+    rpchost = args.rpchost # the hostname of the CEOS RPC gateway
     rpcport = args.rpcport
     tia = args.tia
     ceos = args.ceos
     
-    server = MicroscopeServer(serverport, rpchost, rpcport, TIA=tia, CEOS=ceos)
+    server = MicroscopeServer(serverport, rpchost=rpchost, rpcport=rpcport, TIA=tia, CEOS=ceos)
