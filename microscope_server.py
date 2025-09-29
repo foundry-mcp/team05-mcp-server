@@ -157,7 +157,7 @@ class CorrectorCommands():
         d = self.communicate('acquireTableau', params)
         return d
     
-class TIA_control():
+class MicroscopeControl():
     """This class implements connectivity to TEMScripting and TIA (ESVision)"""
     def __init__(self):
         # Connect to the microscope
@@ -185,7 +185,7 @@ class TIA_control():
             A PIl img object.
         """
         img = ImageGrab.grab()
-        img.save('C:/beacon_screenshot.png')
+        img.save('C:/microscope_server_screenshot.png')
         return img
     
     def open_column_valve(self):
@@ -199,9 +199,8 @@ class TIA_control():
         print('Column valves closed')
 
     def create_or_set_display_window(self, sizeX, sizeY):
-        """TIA needs a display window. This creates one specifically for BEACON
-        or makes it the active one if it exists."""
-        self.window_name = 'BEACON image'
+        """TIA needs a display window. This creates one specifically for the MicroscopeServer or makes it the active one if it exists."""
+        self.window_name = 'Server image'
         winlist = self.TIA.DisplayWindowNames()
         found = False
         for ii in range(winlist.count):
@@ -223,12 +222,12 @@ class TIA_control():
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
 
     def get_mag(self):
-        """Get the STEM magnication.
+        """Get the STEM magnification.
         
         Returns
         -------
         : float
-        THe STEM magnification value.
+        The STEM magnification value.
         """
         return self.Ill.StemMagnification
 
@@ -314,7 +313,7 @@ class TIA_control():
     def move_stage_goto(self, X, Y, Z, A, B):
         """Set the stage position to the values input. This moves directly
         to those coordinates. X, Y, Z are in meters and alpha, beta are in 
-        radians
+        radians. Beta tilt is not currently implemented.
         
         Parameters
         ----------
@@ -549,9 +548,57 @@ class TIA_control():
     def set_camera_length_index(self, CL_index):
         self.Proj.CameraLengthIndex = CL_index
         time.sleep(1)
+        
+    def get_metadata(self):
+        """ Gets some useful parameters about the microscope's
+        current settings. """
+        md = {}
+        md['microscope name'] = "TEAM 0.5"
+        md['high tension'] = self.microscope._microscope.Gun.HTValue
+        md['spot size index'] = self.microscope.Ill.SpotsizeIndex
+        md['magnification'] = self.microscope.Ill.StemMagnification
+        md['defocus'] = self.microscope.Ill.ProbeDefocus
+        md['convergence angle'] = self.microscope.Ill.ConvergenceAngle
+        md['camera length'] = self.microscope.Proj.CameraLength
+        md['stage position'] = self.microscope.get_stage_pos()
+        return md
     
+    def set_beam_tilt(self, beam_tilt, diff_shift=None):
+        """  Sets the beam tilt using the alignment
+        parameter RotationCenter in the illumination
+        system. The diff_shift keyword can be used to
+        compenstate for shift of the beam on the detector
+        using the diffraction shift. Ideally, the diff_shift
+        and beam tilt should be the same value but mis-
+        calibration might make it necessary to change
+        those values.
+        
+        Parameters
+        ----------
+        beam_tilt : tuple, 2 floats
+            The X and Y beam tilt in units f milliradians. The maximum
+            beam tilt is abut 200 mradians
+        diff_shift : tuple, 2 floats
+            The X and Y diffraction shift to apply to compensate for
+            beam motion on the detector. The shift is in milliradians
+            and should be the negative of the beam tilt.
+        """
+        tilt = self.Ill.RotationCenter
+        shift = self.Proj.DiffractionShift
+        
+        if not diff_shift:
+            diff_shift = (0, 0)
+        
+        tilt.X = beam_tilt[0] # must be floats
+        tilt.Y = beam_tilt[1]
+        shift.X = -diff_shift[0]
+        shift.Y = -diff_shift[1]
+        
+        Ill.RotationCenter = tilt
+        Proj.DiffractionShift = shift
 
-class BEACON_Server():
+
+class MicroscopeServer():
     def __init__(self, port, rpchost, rpcport, SIM=False, TEST=False, TIA=True, CEOS=True):
         
         self.SIM = SIM
@@ -559,7 +606,7 @@ class BEACON_Server():
             if CEOS:
                 self.corrector = CorrectorCommands(host=rpchost, port=rpcport) 
             if TIA:
-                self.microscope = TIA_control()
+                self.microscope = MicroscopeControl()
         
         context = zmq.Context()
         serverSocket = context.socket(zmq.REP)
@@ -685,7 +732,11 @@ class BEACON_Server():
                 reply_data = self.microscope.set_stem_rotation(self.d['stem_rotation'])
             elif instruction == 'get_metadata':
                 reply_message = 'get metadata'
-                reply_data = self.get_metadata()
+                reply_data = self.microscope.get_metadata()
+            elif instruction == 'set_beam_tilt':
+                reply_message = 'set beam tilt'
+                self.microscope.set_beam_tilt(self.d['beam_tilt'], diff_shift=self.d['diff_shift'])
+                reply_data = self.Ill.RotationCenter
             else:
                 reply_message = None # TODO: Test if this can be a message back indicating unknown instruction
                 reply_data = None
@@ -1056,19 +1107,8 @@ class BEACON_Server():
         print(tableau_dict)
         
         return tableau_dict
-    
-    def get_metadata(self):
-        md = {}
-        md['microscope name'] = "TEAM 0.5"
-        md['high tension'] = self.microscope._microscope.Gun.HTValue
-        md['spot size index'] = self.microscope.Ill.SpotsizeIndex
-        md['magnification'] = self.microscope.Ill.StemMagnification
-        md['defocus'] = self.microscope.Ill.ProbeDefocus
-        md['convergence angle'] = self.microscope.Ill.ConvergenceAngle
-        md['camera length'] = self.microscope.Proj.CameraLength
-        md['stage position'] = self.microscope.get_stage_pos()
-        return md
-    
+
+
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
@@ -1086,4 +1126,4 @@ if __name__ == '__main__':
     tia = args.tia
     ceos = args.ceos
     
-    server = BEACON_Server(serverport, rpchost, rpcport, TIA=tia, CEOS=ceos)
+    server = MicroscopeServer(serverport, rpchost, rpcport, TIA=tia, CEOS=ceos)
