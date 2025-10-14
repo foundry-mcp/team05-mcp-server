@@ -102,11 +102,17 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         microscope.attrs['microscope name'] = 'TEAM 0.5'
         microscope.attrs['high tension'] = md['high tension']
         microscope.attrs['spot size index'] = md['spot size index']
-        microscope.attrs['magnification'] = md['magnification']
+        microscope.attrs['magnification'] = md['stem magnification']
         microscope.attrs['defocus'] = md['defocus']
         microscope.attrs['convergence angle'] = md['convergence angle']
         microscope.attrs['camera length'] = md['camera length']
+        microscope.attrs['camera length index'] = md['camera length index']
+        microscope.attrs['condenser stigmator'] = md['condenser stigmator']
+        microscope.attrs['stem rotation'] = md['stem rotation']
+        microscope.attrs['diffraction shift'] = md['diffraction shift']
+        microscope.attrs['stem field of view'] = md['stem field of view']
         microscope.attrs['stage position'] = md['stage position']
+        microscope.attrs['
 
         user = f.create_group('user')
         user.attrs['user name'] = user_name
