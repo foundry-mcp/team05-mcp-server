@@ -55,7 +55,14 @@ def get_team05_parameter_configurations():
 
 
 def get_metadata():
-    """ Get metadata from the microscope"""
+    """ Get metadata from the microscope. 
+    
+    Returns
+    -------
+    : dict
+    A dictionary with lots of different STEM metadata.
+    
+    """
     d = {'type': 'get_metadata'}
     Response = microscope_client.send_traffic(d)
     if Response['reply_data'] is None:
@@ -64,59 +71,15 @@ def get_metadata():
         reply_data = Response['reply_data']
         return reply_data
 
-def create_dims(dataTop, exType, pix):
+def create_dims(dataTop, pix):
     """ Create dims for the EMD file."""
-    if exType == 'single':
-        dim2 = dataTop.create_dataset('dim2',(pix,),'f')
-        dim2.attrs['name'] = 'X'
-        dim2.attrs['units'] = 'n_m'
-        dim1 = dataTop.create_dataset('dim1',(pix,),'f')
-        dim1.attrs['name'] = 'Y'
-        dim1.attrs['units'] = 'n_m'
-        #dims = (dim1,dim2)
-    elif exType == 'focalseries':
-        if self.numPerDF > 1:
-            dim4 = dataTop.create_dataset('dim4',(pix,),'f')
-            dim4.attrs['name'] = np.string_('X')
-            dim4.attrs['units'] = np.string_('n_m')
-            dim3 = dataTop.create_dataset('dim3',(pix,),'f')
-            dim3.attrs['name'] = np.string_('Y')
-            dim3.attrs['units'] = np.string_('n_m')
-        else:
-            dim3 = dataTop.create_dataset('dim3', (pix,), 'f')
-            dim3.attrs['name'] = np.string_('X')
-            dim3.attrs['units'] = np.string_('n_m')
-            dim2 = dataTop.create_dataset('dim2', (pix,), 'f')
-            dim2.attrs['name'] = np.string_('Y')
-            dim2.attrs['units'] = np.string_('n_m')
-    else:
-        dim3 = dataTop.create_dataset('dim3',(pix,),'f')
-        dim3.attrs['name'] = np.string_('X')
-        dim3.attrs['units'] = np.string_('n_m')
-        dim2 = dataTop.create_dataset('dim2',(pix,),'f')
-        dim2.attrs['name'] = np.string_('Y')
-        dim2.attrs['units'] = np.string_('n_m')
-        
-    if exType == 'drift':
-        dim1 = dataTop.create_dataset('dim1',(self.Rep,),'f')
-        dim1.attrs['name'] = np.string_('STEM rotation')
-        dim1.attrs['units'] = np.string_('deg')
-    elif exType == 'timeseries':
-        dim1 = dataTop.create_dataset('dim1',(self.Rep,),'f')
-        dim1.attrs['name'] = np.string_('time')
-        dim1.attrs['units'] = np.string_('sec')
-    elif exType == 'focalseries':
-        if self.numPerDF > 1:
-            dim1 = dataTop.create_dataset('dim1',(self.numDF,),'f')
-            dim1.attrs['name'] = np.string_('defocus')
-            dim1.attrs['units'] = np.string_('n_m')
-            dim2 = dataTop.create_dataset('dim2',(self.numPerDF,),'f')
-            dim2.attrs['name'] = np.string_('')
-            dim2.attrs['units'] = np.string_('')
-        else:
-            dim1 = dataTop.create_dataset('dim1',(self.numDF,),'f')
-            dim1.attrs['name'] = np.string_('defocus')
-            dim1.attrs['units'] = np.string_('n_m')
+
+    dim2 = dataTop.create_dataset('dim2',(pix,),'f')
+    dim2.attrs['name'] = 'X'
+    dim2.attrs['units'] = 'n_m'
+    dim1 = dataTop.create_dataset('dim1',(pix,),'f')
+    dim1.attrs['name'] = 'Y'
+    dim1.attrs['units'] = 'n_m'
 
     return 1
 
