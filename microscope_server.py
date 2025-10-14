@@ -564,12 +564,34 @@ class MicroscopeControl():
         md['microscope name'] = "TEAM 0.5"
         md['high tension'] = self.microscope._microscope.Gun.HTValue
         md['spot size index'] = self.microscope.Ill.SpotsizeIndex
-        md['magnification'] = self.microscope.Ill.StemMagnification
-        md['defocus'] = self.microscope.Ill.ProbeDefocus
+        md['stem magnification'] = self.microscope.Ill.StemMagnification
+        md['defocus'] = self.Proj.Defocus # Ill has ProbeDefocus but that is not useful
         md['convergence angle'] = self.microscope.Ill.ConvergenceAngle
         md['camera length'] = self.microscope.Proj.CameraLength
+        md['camera length index'] = self.Proj.CameraLengthIndex
+        md['condenser stigmator'] = self.Ill.CondenserStigmator
+        md['stem rotation'] = self.Ill.StemRotation
+        md['diffraction shift'] = (self.Proj.DiffractionShift.X, self.DiffractionShift.Y)
+        md['stem field of view'] = (self.Ill.StemFullScanFieldOfView.X, self.Ill.StemFullScanFieldOfView.Y)
         md['stage position'] = self.microscope.get_stage_pos()
+        md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
         return md
+    
+    microscope.attrs['microscope name'] = self.microscope_name
+    microscope.attrs['high tension'] = self._microscope.Gun.HTValue
+    microscope.attrs['spot size'] = self.Ill.SpotsizeIndex
+    microscope.attrs['magnification'] = self.Ill.StemMagnification
+    microscope.attrs['probe defocus'] = self.Ill.ProbeDefocus
+    microscope.attrs['defocus'] = self.Proj.Defocus
+    microscope.attrs['convergence angle'] = self.Ill.ConvergenceAngle
+    microscope.attrs['camera length'] = self.Proj.CameraLength
+    microscope.attrs['camera length index'] = self.Proj.CameraLengthIndex
+    microscope.attrs['binning'] = self.Bin
+    microscope.attrs['dwell time'] = self.Dwell
+    microscope.attrs['stage type'] = self.stage_name
+    microscope.attrs['stage position'] = self.get_position()
+    microscope.attrs['condenser stigmator'] = self.Ill.CondenserStigmator
+    microscope.attrs['stem rotation'] = self.Ill.StemRotation
     
     def set_beam_tilt(self, beam_tilt, diff_shift=None):
         """  Sets the beam tilt using the alignment
