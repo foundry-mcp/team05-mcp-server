@@ -74,10 +74,10 @@ def get_metadata():
 def create_dims(dataTop, pix):
     """ Create dims for the EMD file."""
 
-    dim2 = dataTop.create_dataset('dim2',(pix,),'f')
+    dim2 = dataTop.create_dataset('dim2', (pix[1],), 'f')
     dim2.attrs['name'] = 'X'
     dim2.attrs['units'] = 'n_m'
-    dim1 = dataTop.create_dataset('dim1',(pix,),'f')
+    dim1 = dataTop.create_dataset('dim1', (pix[0],), 'f')
     dim1.attrs['name'] = 'Y'
     dim1.attrs['units'] = 'n_m'
 
@@ -96,7 +96,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         dset = dataTop.create_dataset('data', sh, data.dtype)
         
         # Create the EMD dimension datasets
-        _ = create_dims(dataTop, 'single', sh[0])
+        _ = create_dims(dataTop, 'single', sh)
         
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
@@ -121,8 +121,8 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         #dset = dataTop['data']
         
         imageShape = data.shape[-2:]
-        xdim = np.linspace(0,(imageShape[0]-1)*calX*1e9,imageShape[0]) #multiply by 1e9 for nanometers
-        ydim = np.linspace(0,(imageShape[1]-1)*calY*1e9,imageShape[1])
+        xdim = np.linspace(0, (imageShape[0]-1) * calX * 1e9, imageShape[0]) # multiply by 1e9 for nanometers
+        ydim = np.linspace(0, (imageShape[1]-1) * calY * 1e9, imageShape[1])
         dims[-1][:] = xdim
         dims[-2][:] = ydim
         
