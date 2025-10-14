@@ -98,6 +98,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         # Create the EMD dimension datasets
         _ = create_dims(dataTop, 'single', sh)
         
+        print('Check metadata before merging to main!')
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
         microscope.attrs['high tension'] = md['high tension']
@@ -112,8 +113,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         microscope.attrs['diffraction shift'] = md['diffraction shift']
         microscope.attrs['stem field of view'] = md['stem field of view']
         microscope.attrs['stage position'] = md['stage position']
-        microscope.attrs['
-
+        
         user = f.create_group('user')
         user.attrs['user name'] = user_name
         
