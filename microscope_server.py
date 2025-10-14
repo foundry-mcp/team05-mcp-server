@@ -577,22 +577,6 @@ class MicroscopeControl():
         md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
         return md
     
-    microscope.attrs['microscope name'] = self.microscope_name
-    microscope.attrs['high tension'] = self._microscope.Gun.HTValue
-    microscope.attrs['spot size'] = self.Ill.SpotsizeIndex
-    microscope.attrs['magnification'] = self.Ill.StemMagnification
-    microscope.attrs['probe defocus'] = self.Ill.ProbeDefocus
-    microscope.attrs['defocus'] = self.Proj.Defocus
-    microscope.attrs['convergence angle'] = self.Ill.ConvergenceAngle
-    microscope.attrs['camera length'] = self.Proj.CameraLength
-    microscope.attrs['camera length index'] = self.Proj.CameraLengthIndex
-    microscope.attrs['binning'] = self.Bin
-    microscope.attrs['dwell time'] = self.Dwell
-    microscope.attrs['stage type'] = self.stage_name
-    microscope.attrs['stage position'] = self.get_position()
-    microscope.attrs['condenser stigmator'] = self.Ill.CondenserStigmator
-    microscope.attrs['stem rotation'] = self.Ill.StemRotation
-    
     def set_beam_tilt(self, beam_tilt, diff_shift=None):
         """  Sets the beam tilt using the alignment
         parameter RotationCenter in the illumination
