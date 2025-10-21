@@ -5,25 +5,25 @@ A function that returns templated gatan scripts to call from python.
 
 def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotation=0):
     """ Returns a properly formateed script to acquire a 4D-STEM scan
-    using the 4D Camera
+    using the 4D Camera.
     
     Parameters
     ----------
-    pwidth: int
-    The width of the 4D-STEM scan. This is the fast scan direction
+    pwidth : int
+        The width of the 4D-STEM scan. This is the fast scan direction
     pheight : int
-    The height of the 4D-STEM scan. This is the slow scan direction
-    emd: bool
-    Deprecated and not used
-    nread:int
-    The number of frames to acquire at each probe position
-    rotation: float
-    The STEM rotation in degrees.
+        The height of the 4D-STEM scan. This is the slow scan direction
+    emd : bool
+        Deprecated and not used
+    nread : int
+        The number of frames to acquire at each probe position
+    rotation : float
+        The STEM scan rotation in degrees.
     
     Returns
     -------
     : str
-    The string with the parameters written in the format of a DM script.
+        A string that contains the script ready to write to disk and be executed.
     
     """
     script_text =  f"""// Acquire a 4D camera scan.
@@ -44,7 +44,7 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         // Other system variables
         number dataType = 4 // 4 byte data
         number signalIndex = 0
-        number pixelTime= 10 // microseconds, only for HAADF
+        number pixelTime = 11 // microseconds, only for HAADF
         number lineSync = 0 //
 
         number write_to_file = 1 // not implemented; use to fill ram with multiple scans in a row
@@ -54,7 +54,6 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         ipAddressPlusPort = "131.243.3.25:42003" // the format is quad IP address, colon, port number.
 
         // User must synchronize with 4D Camera output manually
-        // SetPersistentNumberNote("4D_scannum", XXX)  //example. copy to new script and run
         number scan_number
         GetPersistentNumberNote("4D_scannum", scan_number)
 
@@ -126,7 +125,7 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
 
         SetName(image0, "scan" + scan_number)
 
-        // Automatically save data to sync directory
+        // Automatically save data to Distiller sync directory
         SaveAsGatan(image0, "X:\\scan" + scan_number + ".dm4")
 
         // For server to read and return
@@ -134,10 +133,43 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
 
         SetPersistentNumberNote("4D_scannum", scan_number+1)
 
-        result("4Dcamera scan done\\n")
+        result("4D Camera scan done\\n")
         """
     return script_text
+
+def move_beam_dm(dX, dY):
+    """ A Gatan DM script that moves the beam position by a desired amount
     
+    TODO: Determine whether this is in pixel or calibrated coordinates.
+    
+    Parameters
+    ----------
+    dX : float
+        The distance to move the beam in the fast scan direction. In pixels or real values?
+    dY : float
+        The distance to move the beam in the slow scan direction. In pixels or real values?
+    
+    Returns
+    -------
+    : str
+        A string that contains the script ready to write to disk and be executed.
+    """
+    script_text = f""" // move beam
+    
+                image im := GetFrontImage()
+                String imName = im.ImageGetName()
+    
+                number X, Y, currX, currY
+    
+                DSGetBeamDSPosition(currX, currY)
+                DSCalcImageCoordFromDS(im, currX, currY, X, Y)
+                number newX = X+{dX}
+                number newY = Y+{dY}
+                DSPositionBeam(im, newX, newY)
+                Result("Beam moved by {dX}, {dY}\\n")
+                """
+    return script_text
+
 def dynamic_4D_camera_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0):
     """ Returns a properly formateed script to acquire a SSTEM scan
     using the HAADF detector.
