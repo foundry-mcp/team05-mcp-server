@@ -6,15 +6,20 @@ Created on Tue Oct  8 14:10:26 2024
 """
 
 import sys
+from pathlib import Path
 import pickle
 import zmq
 import ncempy.io as nio
 import os
 from subprocess import call
 import time
-import dm_script
-import mb_script
 
+import dm_scripts
+
+#import dm_script
+#import mb_script
+
+# Impor the functions for the TIA/Gatan robot
 sys.path.append('C:/Users/VALUEDGATANCUSTOMER/Documents/Maestro')
 from TEAM05_tia_gatan import set_TIA2, set_Gatan  # might need to set path to library
 
@@ -24,16 +29,18 @@ class Multiscan_Server():
         self.SIM = False
         self.is_gatan = False
         
+        self.dir_path = Path('C:/Users/VALUEDGATANCUSTOMER/Documents/automation/')
+        
         if self.SIM:
-            self.DMSCRIPT = r'4Dcamera_automation_acquireScan_temp.s'
+            self.DMSCRIPT = '4Dcamera_automation_acquireScan_temp.s'
             self.dm4_filename = 'latest_4Dscan.dm4'
-            self.dm4_filename_copy = 'latest_4Dscan.dm4'
-            self.MBSCRIPT = r'move_beam.s'
+            #self.dm4_filename_copy = 'latest_4Dscan.dm4'
+            self.MBSCRIPT = 'move_beam.s'
         else:
-            self.DMSCRIPT = r'C:\Users\VALUEDGATANCUSTOMER\Documents\automation\4Dcamera_automation_acquireScan_temp.s'
-            self.dm4_filename = 'C:/Users/VALUEDGATANCUSTOMER/Documents/automation/latest_4Dscan.dm4'
-            self.dm4_filename_copy = 'C:/Users/VALUEDGATANCUSTOMER/Documents/automation/latest_4Dscan_copy.dm4'
-            self.MBSCRIPT = r'C:\Users\VALUEDGATANCUSTOMER\Documents\automation\move_beam.s'
+            self.DMSCRIPT = self.dir_path / Path('4Dcamera_automation_acquireScan_temp.s')
+            self.dm4_filename = self.dir_path / Path('latest_4Dscan.dm4')
+            #self.dm4_filename_copy = self.dir_path / Path('latest_4Dscan_copy.dm4')
+            self.MBSCRIPT = self.dir_path / Path('move_beam.s')
         
         port = 13579
         
@@ -85,9 +92,11 @@ class Multiscan_Server():
             print("Idle")
     
     def get_pixel_size(nn):
+        """Reads the file on disk to get the pixel size"""
         return nio.dm.dmReader(f'X:/scan{nn}')['calX']
     
     def move_beam(self, dX, dY):
+        """Moves the beam. For multi_scan "crater" datasets where there is drift"""
         mbs = mb_script.move_beam_dm(dX, dY)
         print('writing move beam script')
         with open(self.MBSCRIPT, 'w') as f:
@@ -99,6 +108,7 @@ class Multiscan_Server():
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.MBSCRIPT}\"')
         
     def take_gatan_data(self, p):
+        """Acquires a HAADF-STEM image"""
         self.call4DCamDMscript(p)
         dm4_file = nio.dm.dmReader(self.dm4_filename)
         data = dm4_file['data']
@@ -114,13 +124,13 @@ class Multiscan_Server():
         return data, params
 
     def call4DCamDMscript(self, paramdict):
+        """ Acquires a 4D Camera datset"""
         try:
-            params = {'ptime': 11e-6, 'pwidth': 512, 'pheight': 512, 'emd':None}
+            params = {'ptime': 11e-6, 'pwidth': 512, 'pheight': 512, 'rotation':0, 'nread':1}
             if isinstance(paramdict, dict):
                 params.update(paramdict)
-            if params['emd'] is None:
-                params['emd'] = "no emd file"
-            dms = dm_script.dynamic_dm_script(ptime=params['ptime'], pwidth=params['pwidth'], pheight=params['pheight'], emd=params['emd'])
+            dms = dm_script.dynamic_dm_script(pwidth=params['pwidth'], pheight=params['pheight'], 
+                                              rotation=params['rotation'], nread=params['nread'])
             print('writing DM script')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
@@ -128,14 +138,12 @@ class Multiscan_Server():
                 # delete any previous dm4 files
                 if os.path.exists(self.dm4_filename):
                     os.remove(self.dm4_filename)
-                if os.path.exists(self.dm4_filename_copy):
-                    os.remove(self.dm4_filename_copy)
                 # call script
                 print('calling DM script')
                 with open('NUL', 'w') as _:
                     call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
                 # wait for dm4 file to appear
-                while not os.path.exists(self.dm4_filename_copy):
+                while not self.dm4_filename.exists():
                     time.sleep(0.1)
                 print('done')
         except:
