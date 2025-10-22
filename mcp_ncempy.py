@@ -119,7 +119,10 @@ def list_data_files(directory:str):
 
 @mcp.tool()
 def get_statistics(file_id:str):
-    """Caclulates the statistics of the image intensities.
+    """Calculates the statistics of the loaded image indicated by
+    a file_id. This includes the intensity maximum, intensity minimum,
+    intensity standard deviation, the image shape in the x direction,
+    the image shape in the y direction, and the data type of the image.
     
     Parameters
     ----------
@@ -128,11 +131,12 @@ def get_statistics(file_id:str):
     
     Returns
     -------
-    : tuple
-    A tuple with the maximum, minumum, and standard deviation as floats
+    : tuple (float, float, float, int, int, np.dtype)
+    A tuple with the maximum, minumum, standard deviation, image shape y, images shape x, and dtype
     """
     dd = data[file_id]
-    mm = (dd['data'].max(), dd['data'].min(), dd['data'].std())
+    mm = (dd['data'].max(), dd['data'].min(), dd['data'].std(), 
+          dd['data'].shape[0], dd['data'].shape[1], dd['data'].dtype)
     return mm
 
 @mcp.tool()
@@ -213,6 +217,10 @@ def get_emd_metadata(directory:str, file_name:str):
             md['dimension_x_name'] = dims[1][1].replace('_', '')
             md['pixel_size_y_unit'] = dims[1][2].replace('_', '')
             md['pixel_size_x_unit'] = dims[1][2].replace('_', '')
+            
+            md['data_shape'] = (dims[0][0].shape[0], dims[1][0].shape[0])
+            md['data_type'] = f0.list_emds[0]['data'].dtype
+            
         except:
             print('cant get pixel size')
             raise
