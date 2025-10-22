@@ -60,12 +60,12 @@ class GatanServer():
             elif command == 'set_tia':
                 self.is_gatan = self.set_is_gatan(False)
                 message = ('is_gatan', self.is_gatan)
-            elif command == 'take_and_return_data':
+            elif command == 'acquire_4dcamera_scan':
                 # Acquire 4D STEM data
                 prev_is_gatan = self.is_gatan
                 if not self.is_gatan:
                     self.is_gatan = self.set_is_gatan(True)
-                ret = self.take_4dstem_data(params)
+                ret = self.acquire_4dcamera_scan(params)
                 if self.is_gatan != prev_is_gatan:
                     self.is_gatan = self.set_is_gatan(prev_is_gatan)
                 message = ('gatan_data', ret)
@@ -74,10 +74,9 @@ class GatanServer():
                 prev_is_gatan = self.is_gatan
                 if not self.is_gatan:
                     self.is_gatan = self.set_is_gatan(True)
-                ret = self.take_gatan_data(params)
+                ret = self.acquire_stem_scan(params)
                 if self.is_gatan != prev_is_gatan:
                     self.is_gatan = self.set_is_gatan(prev_is_gatan)
-                #message = ('gatan_is_busy', False)
                 message = ('gatan_data', ret)
             elif command == 'set_roi':
                 roi = params
@@ -108,7 +107,7 @@ class GatanServer():
         dY : float
             The distance to move the beam in the slow scan direction. In pixels or real values?
         """
-        mbs = dm_scripts.move_beam_dm(dX, dY)
+        mbs = dm_scripts.move_beam_script(dX, dY)
         print('writing move beam script')
         with open(self.MBSCRIPT, 'w') as f:
             f.write(mbs)
@@ -118,7 +117,7 @@ class GatanServer():
             with open('NUL', 'w') as _:
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.MBSCRIPT}\"')
         
-    def take_stem_data(self, params):
+    def acquire_stem_scan(self, params):
         """Acquires a HAADF-STEM image
         
         Parameters
@@ -150,8 +149,9 @@ class GatanServer():
     def call_stem_script(self, params):
         """ Acquires a STEM datset"""
         try:
-            dms = dm_script.dynamic_dm_script(pwidth=params['pwidth'], pheight=params['pheight'], 
-                                              rotation=params['rotation'], nread=params['nread'])
+            dms = dm_script.acquire_stem_script(dwell_time=params['dwell_time'],
+                                                pwidth=params['pwidth'], pheight=params['pheight'], 
+                                                rotation=params['rotation'], signal_index=params['signal_index'])
             print('writing DM script')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
@@ -170,7 +170,7 @@ class GatanServer():
         except:
             raise
     
-    def take_4dstem_data(self, params):
+    def acquire_4dcamera_scan(self, params):
         """Acquires a 4D-STEM dataset.
 
         Parameters
