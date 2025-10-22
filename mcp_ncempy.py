@@ -201,16 +201,21 @@ def get_emd_metadata(directory:str, file_name:str):
         md.update(f0.sample.attrs)
         md.update(f0.user.attrs)
         
-        try: 
-            dims = f0.getDims()
-            pixel_size_x = dims[0][1] - dims[0][0]
-            pixel_size_y = dims[1][1] - dims[1][0]
+        # Get the pixel size and unit
+        try:
+            dims = f0.get_emddims(f0.list_emds[0])
+            pixel_size_y = dims[0][0][1] - dims[0][0][0]
+            pixel_size_x = dims[1][0][1] - dims[1][0][0]
             
+            md['pixel_size_y'] = pixel_size_y
             md['pixel_size_x'] = pixel_size_x
-            md['pixel_size_y'] = pixel_size_x
-            md['pixel_size_unit'] = dims[2].replace('_', '')
+            md['dimension_y_name'] = dims[0][1].replace('_', '')
+            md['dimension_x_name'] = dims[1][1].replace('_', '')
+            md['pixel_size_y_unit'] = dims[1][2].replace('_', '')
+            md['pixel_size_x_unit'] = dims[1][2].replace('_', '')
         except:
             print('cant get pixel size')
+            raise
         
     return md
     
@@ -251,5 +256,5 @@ if __name__ == "__main__":
     # This allows the server side to show data as images
     plotter = ProcessPlotter()
     
-    # mcp.run(transport="sse", host="127.0.0.1", port=8082)
-    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port=8082)
+    mcp.run(transport="sse", host="127.0.0.1", port=8082)
+    # mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port=8082)
