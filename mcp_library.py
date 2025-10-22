@@ -946,28 +946,63 @@ def move_beam_dm(dX:int, dY:int):
     gatan_client.send_traffic(('move_beam', (dY, dX)))
     
 @mcp.tool()
-def acquire_4D_scan(width:int, height:int):
+def acquire_4D_scan(width:int, height:int, scan_rotation:float, nread:int):
     '''
-    Acquire a 4D-STEM scan.  This takes a data set using the 4D Camera.
-    Ensure you wait a sufficinet amount of time for the data to offload
-    or stream before calling this again.
+    Acquire a 4D-STEM scan. This takes a data set using the 4D Camera.
+    The dwell time per probe position is always 11e-6 seconds.
+    
+    Ensure you wait a sufficient amount of time for the data to offload
+    or stream to NERSC before calling this again.
     
     Parameters
     ----------
     height : int
-     The height in pixels of the 4D-STEM scan
+     The height in pixels of the 4D-STEM scan.
     width : int
-     The width in pixels of the 4D-STEM scan
-
+     The width in pixels of the 4D-STEM scan.
+    scan_rotation : float
+     The STEM scan rotation in degrees.
+    nread : int
+     The number of 4D Camera frames to acquire at each probe position.
+     
     Returns
     -------
     None.
     
     '''
-    params = {'ptime':11e-6, 'pwidth':width, 'pheight':height, 'emd':None}
+    params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
-    gatan_client.send_traffic(('take_and_return_data', params))
-    gatan_client.send_traffic(('set_tia', 0)) # set tia for x-corr
+    gatan_client.send_traffic(('acquire_4dcamera_scan', params))
+    gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
+
+@mcp.tool()
+def acquire_haadf_dm(dwell_time:float, width:int, height:int, scan_rotation:float, signal_index:int):
+    '''
+    Acquire a STEM image using DigitalMicrograph. The TEAM 0.5 only has a HAADF detector such 
+    that the signal_index can only be set to 0.
+    
+    Parameters
+    ----------
+    dwell_time : float
+     The dwell time for each probe position in seconds.
+    height : int
+     The height in pixels of the STEM image along the fast direction.
+    width : int
+     The width in pixels of the STEM image along the slow direction.
+    scan_rotation : float
+     The STEM scan rotation in degrees.
+    signal_index : int
+     The index value of the desired detector. On TEAM 0.5 this can only be == 0
+     
+    Returns
+    -------
+    None.
+    
+    '''
+    params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
+    gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
+    gatan_client.send_traffic(('acquire_stem_scan', params))
+    gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
 
 class Microscope_Client():
     '''Communicates with the server on the microscope PC.'''

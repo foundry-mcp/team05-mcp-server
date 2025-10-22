@@ -103,9 +103,9 @@ class GatanServer():
         where the sample drifts
         
         dX : float
-            The distance to move the beam in the fast scan direction. In pixels or real values?
+            The distance to move the beam in the fast scan direction in pixels.
         dY : float
-            The distance to move the beam in the slow scan direction. In pixels or real values?
+            The distance to move the beam in the slow scan direction in pixels.
         """
         mbs = dm_scripts.move_beam_script(dX, dY)
         print('writing move beam script')

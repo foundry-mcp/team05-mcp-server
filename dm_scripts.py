@@ -7,7 +7,7 @@ subprocess.call from python.
 See gatan_server.py for the server implementation.
 """
 
-def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotation=0):
+def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
     """ A script to acquire a 4D-STEM scan using the 4D Camera.
     
     Parameters
@@ -16,8 +16,6 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         The width of the 4D-STEM scan. This is the fast scan direction.
     pheight : int
         The height of the 4D-STEM scan. This is the slow scan direction.
-    emd : bool
-        Deprecated and not used.
     nread : int
         The number of frames to acquire at each probe position.
     rotation : float
@@ -140,7 +138,7 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         """
     return script_text
 
-def move_beam_dm(dX, dY):
+def move_beam_script(dX, dY):
     """ A Gatan DM script that moves the beam position by a desired amount
     
     TODO: Determine whether this is in pixel or calibrated coordinates.
@@ -148,9 +146,9 @@ def move_beam_dm(dX, dY):
     Parameters
     ----------
     dX : float
-        The distance to move the beam in the fast scan direction. In pixels or real values?
+        The distance to move the beam in the fast scan direction in pixels.
     dY : float
-        The distance to move the beam in the slow scan direction. In pixels or real values?
+        The distance to move the beam in the slow scan direction in pixels.
     
     Returns
     -------
@@ -173,7 +171,7 @@ def move_beam_dm(dX, dY):
                 """
     return script_text
 
-def haadf_acquire_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, signal_index=0):
+def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, signal_index=0):
     """ A script to acquire a STEM scan using the HAADF detector.
     
     Parameters
@@ -181,12 +179,12 @@ def haadf_acquire_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, s
     dwell_time : float
         The dwell time in seconds.
     pwidth: int
-        The width of the 4D-STEM scan. This is the fast scan direction
+        The width of the 4D-STEM scan in pixels. This is the fast scan direction
     pheight : int
-        The height of the 4D-STEM scan. This is the slow scan direction
-    nread:int
+        The height of the 4D-STEM scan in pixels. This is the slow scan direction
+    nread : int
         The number of frames to acquire at each probe position
-    rotation: float
+    rotation : float
         The STEM scan rotation in degrees.
     signal_index : int
         The signal index of the desired STEM detector. On TEAM 0.5 0 is the HAADF.
