@@ -118,29 +118,38 @@ class GatanServer():
             with open('NUL', 'w') as _:
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.MBSCRIPT}\"')
         
-    def take_stem_data(self, p):
-        """Acquires a HAADF-STEM image"""
-        self.call_stem_script(p)
+    def take_stem_data(self, params):
+        """Acquires a HAADF-STEM image
+        
+        Parameters
+        ----------
+        params : dict
+            The parameter dictionary for acquiring a 4D-STEM dataset with the 4D Camera.
+            It requires dwell_time, pwidth, pheight, rotation, and signal_index keys.
+
+        Returns
+        -------
+        : tuple
+            A tuple containing the STEM data as a numpy array and metadata as a tuple.
+        """
+        self.call_stem_script(params)
         
         dm4_file = nio.dm.dmReader(self.dm4_filename)
         data = dm4_file['data']
         with nio.dm.fileDM(self.dm4_filename) as f1:
             allTags = f1.allTags
-        params = {'alltags': allTags,
+        metadata = {'alltags': allTags,
                   'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
                   'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
                   '4Dscan number': allTags.get('.ImageList.2.ImageTags.4Dcamera Parameters.scan_number', None),
                   'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
                   }
         print("HAADF data shape = {}".format(data.shape))
-        return data, params
+        return data, metadata
 
-    def call_stem_script(self, paramdict):
+    def call_stem_script(self, params):
         """ Acquires a STEM datset"""
         try:
-            params = {'ptime': 11e-6, 'pwidth': 512, 'pheight': 512, 'rotation':0, 'nread':1}
-            if isinstance(paramdict, dict):
-                params.update(paramdict)
             dms = dm_script.dynamic_dm_script(pwidth=params['pwidth'], pheight=params['pheight'], 
                                               rotation=params['rotation'], nread=params['nread'])
             print('writing DM script')
@@ -148,8 +157,8 @@ class GatanServer():
                 f.write(dms)
             if not self.SIM:
                 # delete any previous dm4 files
-                if os.path.exists(self.dm4_filename):
-                    os.remove(self.dm4_filename)
+                if self.dm4_filename.exists():
+                    self.dm4_filename.unlink()
                 # call script
                 print('calling DM script')
                 with open('NUL', 'w') as _:
@@ -161,28 +170,48 @@ class GatanServer():
         except:
             raise
     
-    def take_4dstem_data(self, p):
-        """Acquires a HAADF-STEM image"""
-        self.call_4DCam_script(p)
+    def take_4dstem_data(self, params):
+        """Acquires a 4D-STEM dataset.
+
+        Parameters
+        ----------
+        params : dict
+            The parameter dictionary for acquiring a 4D-STEM dataset with the 4D Camera.
+            It requires pwidth, pheight, nread, and rotation keys.
+        
+        """
+        # Acquire the data
+        self.call_4DCam_script(params)
+        # Read the dm4 file
         dm4_file = nio.dm.dmReader(self.dm4_filename)
         data = dm4_file['data']
+        # read the dm4 metadata
         with nio.dm.fileDM(self.dm4_filename) as f1:
             allTags = f1.allTags
-        params = {'alltags': allTags,
-                  'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
-                  'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
-                  '4Dscan number': allTags.get('.ImageList.2.ImageTags.4Dcamera Parameters.scan_number', None),
-                  'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
-                  }
-        print("HAADF data shape = {}".format(data.shape))
-        return data, params
+        metadata = {'alltags': allTags,
+                   'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
+                   'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
+                   '4Dscan number': allTags.get('.ImageList.2.ImageTags.4Dcamera Parameters.scan_number', None),
+                   'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
+                   }
+        
+        return data, metadata
     
-    def call_4DCam_script(self, paramdict):
-        """ Acquires a 4D Camera datset"""
+    def call_4DCam_script(self, params):
+        """ Acquires a 4D Camera datset
+
+        Parameters
+        ----------
+        params : dict
+            The parameter dictionary for acquiring a 4D-STEM dataset with the 4D Camera.
+            It requires pwidth, pheight, nread, and rotation keys.
+        
+        Returns
+        -------
+        : tuple
+            A tuple containing the STEM data as a numpy array and metadata as a tuple.
+        """
         try:
-            params = {'ptime': 11e-6, 'pwidth': 512, 'pheight': 512, 'rotation':0, 'nread':1}
-            if isinstance(paramdict, dict):
-                params.update(paramdict)
             dms = dm_script.dynamic_dm_script(pwidth=params['pwidth'], pheight=params['pheight'], 
                                               rotation=params['rotation'], nread=params['nread'])
             print('writing DM script')
@@ -190,8 +219,8 @@ class GatanServer():
                 f.write(dms)
             if not self.SIM:
                 # delete any previous dm4 files
-                if os.path.exists(self.dm4_filename):
-                    os.remove(self.dm4_filename)
+                if self.dm4_filename.exists():
+                    self.dm4_filename.unlink()
                 # call script
                 print('calling DM script')
                 with open('NUL', 'w') as _:
