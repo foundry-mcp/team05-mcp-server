@@ -96,13 +96,13 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         dset = dataTop.create_dataset('data', sh, data.dtype)
         
         # Create the EMD dimension datasets
-        _ = create_dims(dataTop, 'single', sh[0])
+        _ = create_dims(dataTop, sh[0])
         
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
         microscope.attrs['high tension'] = md['high tension']
         microscope.attrs['spot size index'] = md['spot size index']
-        microscope.attrs['magnification'] = md['magnification']
+        microscope.attrs['stem magnification'] = md['stem magnification']
         microscope.attrs['defocus'] = md['defocus']
         microscope.attrs['convergence angle'] = md['convergence angle']
         microscope.attrs['camera length'] = md['camera length']

@@ -227,7 +227,7 @@ class MicroscopeControl():
             self.w2D.name = self.window_name
             self.d1 = self.w2D.addDisplay('Image 1 Display', 0,0,3,1)
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
-        TIA.ActivateDisplayWindow(self.window_name)
+        #self.TIA.ActivateDisplayWindow(self.window_name)
         
     def get_mag(self):
         """Get the STEM magnification.
@@ -291,8 +291,10 @@ class MicroscopeControl():
            The X, Y, Z, alpha, beta values of the stage. The position 
            is in meters and the angles are in radians.
         '''
+        print('a')
         stageObj = self.Stage.Position
-        print('Stage position = {}'.format(stageObj))
+        print('Stage position0 = {}'.format(stageObj))
+        print('returning')
         return stageObj.X, stageObj.Y, stageObj.Z, stageObj.A, stageObj.B
 
     def move_stage_delta(self, dX=0, dY=0, dZ=0, dA=0, dB=0):
@@ -562,18 +564,20 @@ class MicroscopeControl():
         current settings. """
         md = {}
         md['microscope name'] = "TEAM 0.5"
-        md['high tension'] = self.microscope._microscope.Gun.HTValue
-        md['spot size index'] = self.microscope.Ill.SpotsizeIndex
-        md['stem magnification'] = self.microscope.Ill.StemMagnification
+        md['high tension'] = self._microscope.Gun.HTValue
+        md['spot size index'] = self.Ill.SpotsizeIndex
+        md['stem magnification'] = self.Ill.StemMagnification
         md['defocus'] = self.Proj.Defocus # Ill has ProbeDefocus but that is not useful
-        md['convergence angle'] = self.microscope.Ill.ConvergenceAngle
-        md['camera length'] = self.microscope.Proj.CameraLength
+        md['convergence angle'] = self.Ill.ConvergenceAngle
+        md['camera length'] = self.Proj.CameraLength
         md['camera length index'] = self.Proj.CameraLengthIndex
-        md['condenser stigmator'] = self.Ill.CondenserStigmator
+        md['condenser stigmator'] = (self.Ill.CondenserStigmator.X, self.Ill.CondenserStigmator.Y)
         md['stem rotation'] = self.Ill.StemRotation
-        md['diffraction shift'] = (self.Proj.DiffractionShift.X, self.DiffractionShift.Y)
+        md['diffraction shift'] = (self.Proj.DiffractionShift.X, self.Proj.DiffractionShift.Y)
         md['stem field of view'] = (self.Ill.StemFullScanFieldOfView.X, self.Ill.StemFullScanFieldOfView.Y)
-        md['stage position'] = self.microscope.get_stage_pos()
+        print('here')
+        print(self.get_stage_pos())
+        md['stage position'] = self.get_stage_pos()
         md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
         return md
     
