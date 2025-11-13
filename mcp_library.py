@@ -513,16 +513,33 @@ def set_beam_tilt(tilt:tuple):
     Parameters
     ----------
     tilt : tuple
-        The X and Y tilt values in 
+        The X and Y tilt values in radians
 
     Returns
     -------
     None
 
     '''
+    diff_shift = (-tilt[0], -tilt[1])
     d = {'type': 'set_beam_tilt', 'beam_tilt': tilt, 'diff_shift': tilt}
     print(d)
     microscope_client.send_traffic(d)
+
+@mcp.tool()
+def get_beam_tilt(tilt:tuple):
+    '''
+    Get the beam tilt in STEM mode.
+    
+    Returns
+    -------
+    : str
+
+    '''
+    d = {'type': 'get_beam_tilt'}
+    print(d)
+    response = microscope_client.send_traffic(d)
+    print(response)
+    return response
 
 @mcp.tool()
 def set_camera_length_index(CL_index:int):
@@ -553,7 +570,8 @@ def open_column_valve():
 
     Returns
     -------
-    str: reply message
+    :str
+    reply message
 
     '''
     d = {'type': 'open_column_valve'}
@@ -568,7 +586,8 @@ def close_column_valve():
 
     Returns
     -------
-    str: reply message.
+    : cstr
+    reply message.
 
     '''
     d = {'type': 'close_column_valve'}
