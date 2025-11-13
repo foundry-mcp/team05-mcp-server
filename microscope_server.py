@@ -269,7 +269,7 @@ class MicroscopeControl():
             The rotation in radians. 
         """
         self.Ill.StemRotation = rot
-        print('Mag set to {}'.format(self.Ill.StemRotation))
+        print('STEM rtation set to {}'.format(self.Ill.StemRotation))
 
     def get_stem_convergence_angle(self):
         """Get the STEM convergence angle in radians.
@@ -581,6 +581,17 @@ class MicroscopeControl():
         md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
         return md
     
+    def get_beam_tilt(self):
+        """Get the STEM rotation center which is the beam tilt in radians.
+        
+        Returns
+        -------
+        : float
+        The STEM beam tilt value in radians.
+        """
+        print(self.Ill.RotationCenter.X)
+        return (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
+    
     def set_beam_tilt(self, beam_tilt, diff_shift=None):
         """  Sets the beam tilt using the alignment
         parameter RotationCenter in the illumination
@@ -594,11 +605,11 @@ class MicroscopeControl():
         Parameters
         ----------
         beam_tilt : tuple, 2 floats
-            The X and Y beam tilt in units f milliradians. The maximum
-            beam tilt is abut 200 mradians
+            The X and Y beam tilt in units f radians. The maximum
+            beam tilt is abut .200 radians
         diff_shift : tuple, 2 floats
             The X and Y diffraction shift to apply to compensate for
-            beam motion on the detector. The shift is in milliradians
+            beam motion on the detector. The shift is in radians
             and should be the negative of the beam tilt.
         """
         tilt = self.Ill.RotationCenter
@@ -614,7 +625,6 @@ class MicroscopeControl():
         
         self.Ill.RotationCenter = tilt
         self.Proj.DiffractionShift = shift
-
 
 class MicroscopeServer():
     def __init__(self, port, rpchost=None, rpcport=None, SIM=False, TEST=False, TIA=True, CEOS=True):
@@ -775,12 +785,15 @@ class MicroscopeServer():
             elif instruction == 'get_metadata':
                 reply_message = 'get metadata'
                 reply_data = self.microscope.get_metadata()
+            elif instruction == 'get_beam_tilt':
+                reply_message = self.microscope.get_beam_tilt()
             elif instruction == 'set_beam_tilt':
                 reply_message = 'set beam tilt'
                 self.microscope.set_beam_tilt(self.d['beam_tilt'], diff_shift=self.d['diff_shift'])
-                reply_data = self.Ill.RotationCenter
+                reply_data = self.microscope.get_beam_tilt()
             else:
-                reply_message = None # TODO: Test if this can be a message back indicating unknown instruction
+                print('Unknown call')
+                reply_message = 'unknown call' # TODO: Test if this can be a message back indicating unknown instruction
                 reply_data = None
             
             reply_d = {'reply_message': reply_message,
