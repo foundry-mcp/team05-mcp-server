@@ -589,7 +589,6 @@ class MicroscopeControl():
         : float
         The STEM beam tilt value in radians.
         """
-        print(self.Ill.RotationCenter.X)
         return (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
     
     def set_beam_tilt(self, beam_tilt, diff_shift=None):
@@ -625,7 +624,30 @@ class MicroscopeControl():
         
         self.Ill.RotationCenter = tilt
         self.Proj.DiffractionShift = shift
-
+    
+    def get_diffraction_shift(self):
+        """Get the STEM diffraction shift in radians.
+        
+        Returns
+        -------
+        : float
+        The STEM diffraction shift value in radians.
+        """
+        return (self.Proj.DiffractionShift.X, self.Proj.DiffractionShift.Y)
+    
+    def set_diffraction_shift(self, diff_shift):
+        """  Sets the diffraction shift in radians.
+        
+        Parameters
+        ----------
+        diff_shift : tuple, 2 floats
+            The X and Y diffraction shift The shift is in radians.
+        """
+        _ = self.Proj.DiffractionShift
+        _.X = diff_shift[0]
+        _.Y = diff_shift[1]
+        self.Proj.DiffractionShift = _
+        
 class MicroscopeServer():
     def __init__(self, port, rpchost=None, rpcport=None, SIM=False, TEST=False, TIA=True, CEOS=True):
         """  A server that accepts strings. Each string is treated
@@ -791,6 +813,12 @@ class MicroscopeServer():
                 reply_message = 'set beam tilt'
                 self.microscope.set_beam_tilt(self.d['beam_tilt'], diff_shift=self.d['diff_shift'])
                 reply_data = self.microscope.get_beam_tilt()
+            elif instruction == 'get_diffraction_shift':
+                reply_message = self.microscope.get_diffraction_shift()
+            elif instruction == 'set_diffraction_shift':
+                reply_message = 'set diffraction shift'
+                self.microscope.set_diffraction_shift(self.d['diff_shift'])
+                reply_data = self.microscope.get_diffraction_shift()
             else:
                 print('Unknown call')
                 reply_message = 'unknown call' # TODO: Test if this can be a message back indicating unknown instruction

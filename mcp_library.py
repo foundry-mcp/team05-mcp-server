@@ -506,9 +506,45 @@ def set_mag(mag:int):
     microscope_client.send_traffic(d)
 
 @mcp.tool()
+def set_diffraction_shift(shift:tuple):
+    '''
+    Set the diffraction shift in STEM mode. The shift
+    is applied in radians.
+    
+    Parameters
+    ----------
+    shift : tuple
+        The X and Y shift values in radians
+
+    Returns
+    -------
+    None
+
+    '''
+    d = {'type': 'set_diffraction_shift', 'diff_shift':shift}
+    print(d)
+    microscope_client.send_traffic(d)
+
+@mcp.tool()
+def get_diffraction_shift():
+    '''
+    Get the diffraction shift in STEM mode.
+    
+    Returns
+    -------
+    : str
+    The X and Y diffraction shifts in radians.
+    '''
+    d = {'type': 'get_diffraction_shift'}
+    response = microscope_client.send_traffic(d)
+    return response
+
+@mcp.tool()
 def set_beam_tilt(tilt:tuple):
     '''
-    Set the beam tilt in STEM mode.
+    Set the beam tilt in STEM mode. The diffraction shift
+    is compensated for automatically with the opposite
+    shift in radians.
     
     Parameters
     ----------
