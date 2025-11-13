@@ -506,6 +506,25 @@ def set_mag(mag:int):
     microscope_client.send_traffic(d)
 
 @mcp.tool()
+def set_beam_tilt(tilt:tuple):
+    '''
+    Set the beam tilt in STEM mode.
+    
+    Parameters
+    ----------
+    tilt : tuple
+        The X and Y tilt values in 
+
+    Returns
+    -------
+    None
+
+    '''
+    d = {'type': 'set_beam_tilt', 'beam_tilt': tilt, 'diff_shift': tilt}
+    print(d)
+    microscope_client.send_traffic(d)
+
+@mcp.tool()
 def set_camera_length_index(CL_index:int):
     '''
     Set the STEM camera length index value.
