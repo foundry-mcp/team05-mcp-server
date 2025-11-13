@@ -85,7 +85,7 @@ def create_dims(dataTop, pix):
 
 def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=''):
     with h5py.File(file_path, 'w') as f:
-        sh = data.shape
+        shape = data.shape
         microscope_name = 'TEAM 0.5'
         md = get_metadata()
         
@@ -93,10 +93,10 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         
         # Initialize the data set
         dataTop = dataroot.create_group('single')
-        dset = dataTop.create_dataset('data', sh, data.dtype)
+        dset = dataTop.create_dataset('data', shape, data.dtype)
         
         # Create the EMD dimension datasets
-        _ = create_dims(dataTop, 'single', sh)
+        _ = create_dims(dataTop, shape)
         
         print('Check metadata before merging to main!')
         microscope = f.create_group('microscope')
@@ -129,8 +129,8 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         imageShape = data.shape[-2:]
         xdim = np.linspace(0, (imageShape[0]-1) * calX * 1e9, imageShape[0]) # multiply by 1e9 for nanometers
         ydim = np.linspace(0, (imageShape[1]-1) * calY * 1e9, imageShape[1])
-        dims[-1][:] = xdim
-        dims[-2][:] = ydim
+        dims[-1][:] = ydim
+        dims[-2][:] = xdim
         
         # Add as attribute so loading in Fiji provides pixel size
         # Note: Must be 3D so set the first element to 1
