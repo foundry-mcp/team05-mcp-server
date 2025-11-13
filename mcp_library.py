@@ -74,10 +74,10 @@ def get_metadata():
 def create_dims(dataTop, pix):
     """ Create dims for the EMD file."""
 
-    dim2 = dataTop.create_dataset('dim2',(pix,),'f')
+    dim2 = dataTop.create_dataset('dim2', (pix[1],), 'f')
     dim2.attrs['name'] = 'X'
     dim2.attrs['units'] = 'n_m'
-    dim1 = dataTop.create_dataset('dim1',(pix,),'f')
+    dim1 = dataTop.create_dataset('dim1', (pix[0],), 'f')
     dim1.attrs['name'] = 'Y'
     dim1.attrs['units'] = 'n_m'
 
@@ -85,7 +85,7 @@ def create_dims(dataTop, pix):
 
 def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=''):
     with h5py.File(file_path, 'w') as f:
-        sh = data.shape
+        shape = data.shape
         microscope_name = 'TEAM 0.5'
         md = get_metadata()
         
@@ -93,11 +93,11 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         
         # Initialize the data set
         dataTop = dataroot.create_group('single')
-        dset = dataTop.create_dataset('data', sh, data.dtype)
+        dset = dataTop.create_dataset('data', shape, data.dtype)
         
         # Create the EMD dimension datasets
-        _ = create_dims(dataTop, sh[0])
-        
+        _ = create_dims(dataTop, shape)
+
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
         microscope.attrs['high tension'] = md['high tension']
@@ -106,8 +106,13 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         microscope.attrs['defocus'] = md['defocus']
         microscope.attrs['convergence angle'] = md['convergence angle']
         microscope.attrs['camera length'] = md['camera length']
+        microscope.attrs['camera length index'] = md['camera length index']
+        microscope.attrs['condenser stigmator'] = md['condenser stigmator']
+        microscope.attrs['stem rotation'] = md['stem rotation']
+        microscope.attrs['diffraction shift'] = md['diffraction shift']
+        microscope.attrs['stem field of view'] = md['stem field of view']
         microscope.attrs['stage position'] = md['stage position']
-
+        
         user = f.create_group('user')
         user.attrs['user name'] = user_name
         
@@ -121,10 +126,10 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         #dset = dataTop['data']
         
         imageShape = data.shape[-2:]
-        xdim = np.linspace(0,(imageShape[0]-1)*calX*1e9,imageShape[0]) #multiply by 1e9 for nanometers
-        ydim = np.linspace(0,(imageShape[1]-1)*calY*1e9,imageShape[1])
-        dims[-1][:] = xdim
-        dims[-2][:] = ydim
+        xdim = np.linspace(0, (imageShape[0]-1) * calX * 1e9, imageShape[0]) # multiply by 1e9 for nanometers
+        ydim = np.linspace(0, (imageShape[1]-1) * calY * 1e9, imageShape[1])
+        dims[-1][:] = ydim
+        dims[-2][:] = xdim
         
         # Add as attribute so loading in Fiji provides pixel size
         # Note: Must be 3D so set the first element to 1
