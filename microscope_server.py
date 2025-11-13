@@ -612,8 +612,8 @@ class MicroscopeControl():
         shift.X = -diff_shift[0]
         shift.Y = -diff_shift[1]
         
-        Ill.RotationCenter = tilt
-        Proj.DiffractionShift = shift
+        self.Ill.RotationCenter = tilt
+        self.Proj.DiffractionShift = shift
 
 
 class MicroscopeServer():
