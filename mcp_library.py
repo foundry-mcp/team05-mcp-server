@@ -557,7 +557,7 @@ def set_beam_tilt(tilt:tuple):
 
     '''
     diff_shift = (-tilt[0], -tilt[1])
-    d = {'type': 'set_beam_tilt', 'beam_tilt': tilt, 'diff_shift': tilt}
+    d = {'type': 'set_beam_tilt', 'beam_tilt': tilt, 'diff_shift': diff_shift}
     print(d)
     microscope_client.send_traffic(d)
 
