@@ -374,7 +374,7 @@ class MicroscopeControl():
         
         """
         stig = self._microscope.Ill.CondenserStigmator
-        return (stig.X, stig,Y)
+        return (stig.X, stig.Y)
 
     def get_condensor_stigmator(self, stig):
         """Sets the current value of the condensor stigmator in meters. This 
