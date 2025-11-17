@@ -16,6 +16,8 @@ import socket
 import json
 import pynetstring
 import time
+import logging
+import traceback
 
 from PIL import Image, ImageGrab
 
@@ -363,33 +365,33 @@ class MicroscopeControl():
         '''
         return self._microscope.Gun.HTValue
 
-    def get_condensor_stigmator(self):
-        """Returns the current value of the condensor stigmator in meters. This 
+    def get_condenser_stigmator(self):
+        """Returns the current value of the condenser stigmator in meters. This
         is separate from the CEOS stigmator value.
-        
+
         Returns
         -------
         : tuple (float, float)
-        The microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
-        
-        """
-        stig = self._microscope.Ill.CondenserStigmator
-        return (stig.X, stig,Y)
+        The microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
 
-    def get_condensor_stigmator(self, stig):
-        """Sets the current value of the condensor stigmator in meters. This 
+        """
+        stig = self.Ill.CondenserStigmator
+        return (stig.X, stig.Y)
+
+    def set_condenser_stigmator(self, stig):
+        """Sets the current value of the condenser stigmator in meters. This
         is separate from the CEOS stigmator value.
-        
+
         Parameters
         ----------
         stig : tuple (float, float)
-        The desired microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
-        
+        The desired microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
+
         """
-        cur_stig = self._microscope.Ill.CondenserStigmator # get a stig object
+        cur_stig = self.Ill.CondenserStigmator # get a stig object
         cur_stig.X = stig[0]
         cur_stig.Y = stig[1]
-        self._microscope.Ill.CondenserStigmator = cur_stig
+        self.Ill.CondenserStigmator = cur_stig
     
     def get_defocus(self):
         ''' Returns the defocus in meters.
@@ -675,6 +677,30 @@ class MicroscopeServer():
         host and port are also optional keywords.
         
         """
+        # Setup logging
+        self.logger = logging.getLogger('MicroscopeServer')
+        self.logger.setLevel(logging.DEBUG)
+
+        # Create formatters
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+
+        # File handler
+        file_handler = logging.FileHandler('microscope_server.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        self.logger.info('Initializing MicroscopeServer')
+
         self.SIM = SIM
         if not self.SIM:
             if CEOS:
@@ -685,10 +711,47 @@ class MicroscopeServer():
         context = zmq.Context()
         serverSocket = context.socket(zmq.REP)
         serverSocket.bind('tcp://*:'+str(port))
-        print('Server Online')
-        
+        self.logger.info('Server Online on port {}'.format(port))
+
         self.refImage = None
-        
+
+        # Command dispatch dictionary
+        self.command_handlers = {
+            'ping': self._handle_ping,
+            'c1a1': self._handle_c1a1,
+            'tableau': self._handle_tableau,
+            'ac': self._handle_ac,
+            'ab_only': self._handle_ab_only,
+            'ref': self._handle_ref,
+            'image': self._handle_image,
+            'move_stage': self._handle_move_stage,
+            'move_stage_goto': self._handle_move_stage_goto,
+            'get_mag': self._handle_get_mag,
+            'get_stage_pos': self._handle_get_stage_pos,
+            'get_camera_length': self._handle_get_camera_length,
+            'get_camera_length_index': self._handle_get_camera_length_index,
+            'get_defocus': self._handle_get_defocus,
+            'get_voltage': self._handle_get_voltage,
+            'set_mag': self._handle_set_mag,
+            'set_camera_length_index': self._handle_set_camera_length_index,
+            'set_defocus': self._handle_set_defocus,
+            'open_column_valve': self._handle_open_column_valve,
+            'close_column_valve': self._handle_close_column_valve,
+            'blank_beam': self._handle_blank_beam,
+            'unblank_beam': self._handle_unblank_beam,
+            'get_screenshot': self._handle_get_screenshot,
+            'get_condenser_stigmator': self._handle_get_condenser_stigmator,
+            'set_condenser_stigmator': self._handle_set_condenser_stigmator,
+            'get_convergence_angle': self._handle_get_convergence_angle,
+            'get_stem_rotation': self._handle_get_stem_rotation,
+            'set_stem_rotation': self._handle_set_stem_rotation,
+            'get_metadata': self._handle_get_metadata,
+            'get_beam_tilt': self._handle_get_beam_tilt,
+            'set_beam_tilt': self._handle_set_beam_tilt,
+            'get_diffraction_shift': self._handle_get_diffraction_shift,
+            'set_diffraction_shift': self._handle_set_diffraction_shift,
+        }
+
         if TEST:
             self.d = {'type': 'ac',
                       'ab_values': {'C1': 0.0},
@@ -706,129 +769,233 @@ class MicroscopeServer():
             print(qval)
 
         while True:
-            data = serverSocket.recv()
-            self.d = pickle.loads(data)
-            instruction = self.d['type']
-            print(self.d)
-            
-            if instruction == 'ping':
-                reply_message = 'pinged'
-                reply_data = None
-            elif instruction == 'c1a1':
-                reply_message = 'c1a1 measured'
-                reply_data = self.c1a1_measurement()
-            elif instruction == 'tableau':
-                reply_message = 'tableau measured'
-                reply_data = self.tableau_measurement()
-            elif instruction == 'ac':
-                reply_message = 'ac'
-                reply_data = self.acquire_image_with_aberrations()
-            elif instruction == 'ab_only':
-                reply_message = 'aberrations changed'
-                reply_data = self.abChange(self.d['ab_values'], self.d['ab_select'], self.d['C1_defocus_flag'], undo=False, bscomp=self.d['bscomp'])
-            elif instruction == 'ref':
-                self.refImage, _, _, _ = self.microscope.microscope_acquire_image(self.d['dwell'], self.d['shape'])
-                reply_message = 'reference image set'
-                reply_data = self.refImage
-            elif instruction == 'image':
-                reply_message = 'image acquired'
-                reply_data = self.microscope.microscope_acquire_image(self.d['dwell'], self.d['shape'], self.d['offset'])
-            elif instruction == 'move_stage':
-                reply_message = 'stage moved'
-                reply_data = self.microscope.move_stage_delta(self.d['dX'], self.d['dY'], self.d['dZ'], self.d['dA'], self.d['dB'])
-            elif instruction == 'move_stage_goto':
-                reply_message = 'stage moved'
-                reply_data = self.microscope.move_stage_goto(self.d['X'], self.d['Y'], self.d['Z'], self.d['A'], self.d['B'])
-            elif instruction == 'get_mag':
-                reply_message = 'mag obtained'
-                reply_data = self.microscope.get_mag()
-            elif instruction == 'get_stage_pos':
-                reply_message = 'pos obtained'
-                reply_data = self.microscope.get_stage_pos()
-            elif instruction == 'get_camera_length':
-                reply_message = 'camera length obtained'
-                reply_data = self.microscope.get_camera_length()
-            elif instruction == 'get_camera_length_index':
-                reply_message = 'camera length index obtained'
-                reply_data = self.microscope.get_camera_length_index()
-            elif instruction == 'get_defocus':
-                reply_message = 'defocus acquired'
-                reply_data = self.microscope.get_defocus()
-            elif instruction == 'get_voltage':
-                reply_message = 'voltage acquired'
-                reply_data = self.microscope.get_voltage()
-            elif instruction == 'set_mag':
-                reply_message = 'mag changed'
-                reply_data = self.microscope.set_mag(self.d['mag'])
-            elif instruction == 'set_camera_length_index':
-                reply_message = 'camera_length set'
-                reply_data = self.microscope.set_camera_length_index(self.d['CL_index'])
-            elif instruction == 'set_defocus':
-                reply_message = 'defocus set'
-                reply_data = self.microscope.set_defocus(self.d['target_df'])
-            elif instruction == 'open_column_valve':
-                self.microscope.open_column_valve()
-                if self.microscope._microscope.Vacuum.ColumnValvesOpen:
-                    reply_message = 'column valve open'
+            try:
+                data = serverSocket.recv()
+                self.d = pickle.loads(data)
+                instruction = self.d['type']
+                self.logger.info('Received command: {}'.format(instruction))
+                self.logger.debug('Command data: {}'.format(self.d))
+
+                # Use command dispatch dictionary
+                handler = self.command_handlers.get(instruction)
+                if handler:
+                    try:
+                        reply_message, reply_data = handler()
+                        error = None
+                        self.logger.info('Command {} completed successfully'.format(instruction))
+                    except Exception as e:
+                        # Log the full error with traceback
+                        self.logger.error('Error executing command {}: {}'.format(instruction, str(e)))
+                        self.logger.error(traceback.format_exc())
+                        # Return error to client
+                        reply_message = 'error executing {}'.format(instruction)
+                        reply_data = None
+                        error = str(e)
                 else:
-                    reply_message = 'column valve NOT open'
-                reply_data = None
-            elif instruction == 'close_column_valve':
-                self.microscope.close_column_valve()
-                if not self.microscope._microscope.Vacuum.ColumnValvesOpen:
-                    reply_message = 'column valve closed'
-                else:
-                    reply_message = 'column valve NOT closed'
-                reply_data = None
-            elif instruction == 'blank_beam':
-                reply_message = 'beam blanked'
-                reply_data = self.microscope.blank()
-            elif instruction == 'unblank_beam':
-                reply_message = 'beam unblanked'
-                reply_data = self.microscope.unblank()
-            elif instruction == 'get_screenshot':
-                reply_message = 'screenshot taken'
-                reply_data = self.microscope.get_screenshot()
-            elif instruction == 'get_condenser_stigmator':
-                reply_message = 'get condenser stigmator'
-                reply_data = self.microscope.get_condenser_stigmator()
-            elif instruction == 'set_condenser_stigmator': # TODO: need to implement this in the dictionary
-                reply_message = 'set condenser stigmator'
-                reply_data = self.microscope.set_condenser_stigmator(self.d['cond_stig'])
-            elif instruction == 'get_convergence_angle':
-                reply_message = 'get convergence angle'
-                reply_data = self.microscope.get_convergence_angle()
-            elif instruction == 'get_stem_rotation':
-                reply_message = 'get stem rotation'
-                reply_data = self.microscope.get_stem_rotation()
-            elif instruction == 'set_stem_rotation':
-                reply_message = 'set stem rotation'
-                reply_data = self.microscope.set_stem_rotation(self.d['stem_rotation'])
-            elif instruction == 'get_metadata':
-                reply_message = 'get metadata'
-                reply_data = self.microscope.get_metadata()
-            elif instruction == 'get_beam_tilt':
-                reply_message = self.microscope.get_beam_tilt()
-            elif instruction == 'set_beam_tilt':
-                reply_message = 'set beam tilt'
-                self.microscope.set_beam_tilt(self.d['beam_tilt'], diff_shift=self.d['diff_shift'])
-                reply_data = self.microscope.get_beam_tilt()
-            elif instruction == 'get_diffraction_shift':
-                reply_message = self.microscope.get_diffraction_shift()
-            elif instruction == 'set_diffraction_shift':
-                reply_message = 'set diffraction shift'
-                self.microscope.set_diffraction_shift(self.d['diff_shift'])
-                reply_data = self.microscope.get_diffraction_shift()
-            else:
-                print('Unknown call')
-                reply_message = 'unknown call' # TODO: Test if this can be a message back indicating unknown instruction
-                reply_data = None
-            
-            reply_d = {'reply_message': reply_message,
-                       'reply_data': reply_data}
-            
-            serverSocket.send(pickle.dumps(reply_d))
-    
+                    self.logger.warning('Unknown command received: {}'.format(instruction))
+                    reply_message = 'unknown call'
+                    reply_data = None
+                    error = 'Unknown command: {}'.format(instruction)
+
+                reply_d = {'reply_message': reply_message,
+                           'reply_data': reply_data,
+                           'error': error}
+
+                serverSocket.send(pickle.dumps(reply_d))
+
+            except KeyboardInterrupt:
+                self.logger.info('Server shutting down due to keyboard interrupt')
+                break
+            except Exception as e:
+                # Catch any other unexpected errors to prevent server crash
+                self.logger.critical('Unexpected error in main loop: {}'.format(str(e)))
+                self.logger.critical(traceback.format_exc())
+                # Try to send error response to client
+                try:
+                    reply_d = {'reply_message': 'server error',
+                               'reply_data': None,
+                               'error': str(e)}
+                    serverSocket.send(pickle.dumps(reply_d))
+                except:
+                    self.logger.critical('Failed to send error response to client')
+                    pass
+
+    # Command handler methods
+    def _handle_ping(self):
+        """Handle ping command"""
+        return 'pinged', None
+
+    def _handle_c1a1(self):
+        """Handle c1a1 measurement"""
+        return 'c1a1 measured', self.c1a1_measurement()
+
+    def _handle_tableau(self):
+        """Handle tableau measurement"""
+        return 'tableau measured', self.tableau_measurement()
+
+    def _handle_ac(self):
+        """Handle acquire image with aberrations"""
+        return 'ac', self.acquire_image_with_aberrations()
+
+    def _handle_ab_only(self):
+        """Handle aberrations change only"""
+        reply_data = self.abChange(
+            self.d['ab_values'],
+            self.d['ab_select'],
+            self.d['C1_defocus_flag'],
+            undo=False,
+            bscomp=self.d['bscomp']
+        )
+        return 'aberrations changed', reply_data
+
+    def _handle_ref(self):
+        """Handle reference image acquisition"""
+        self.refImage, _, _, _ = self.microscope.microscope_acquire_image(
+            self.d['dwell'],
+            self.d['shape']
+        )
+        return 'reference image set', self.refImage
+
+    def _handle_image(self):
+        """Handle image acquisition"""
+        reply_data = self.microscope.microscope_acquire_image(
+            self.d['dwell'],
+            self.d['shape'],
+            self.d['offset']
+        )
+        return 'image acquired', reply_data
+
+    def _handle_move_stage(self):
+        """Handle stage movement by delta"""
+        reply_data = self.microscope.move_stage_delta(
+            self.d['dX'],
+            self.d['dY'],
+            self.d['dZ'],
+            self.d['dA'],
+            self.d['dB']
+        )
+        return 'stage moved', reply_data
+
+    def _handle_move_stage_goto(self):
+        """Handle stage movement to absolute position"""
+        reply_data = self.microscope.move_stage_goto(
+            self.d['X'],
+            self.d['Y'],
+            self.d['Z'],
+            self.d['A'],
+            self.d['B']
+        )
+        return 'stage moved', reply_data
+
+    def _handle_get_mag(self):
+        """Handle get magnification"""
+        return 'mag obtained', self.microscope.get_mag()
+
+    def _handle_get_stage_pos(self):
+        """Handle get stage position"""
+        return 'pos obtained', self.microscope.get_stage_pos()
+
+    def _handle_get_camera_length(self):
+        """Handle get camera length"""
+        return 'camera length obtained', self.microscope.get_camera_length()
+
+    def _handle_get_camera_length_index(self):
+        """Handle get camera length index"""
+        return 'camera length index obtained', self.microscope.get_camera_length_index()
+
+    def _handle_get_defocus(self):
+        """Handle get defocus"""
+        return 'defocus acquired', self.microscope.get_defocus()
+
+    def _handle_get_voltage(self):
+        """Handle get voltage"""
+        return 'voltage acquired', self.microscope.get_voltage()
+
+    def _handle_set_mag(self):
+        """Handle set magnification"""
+        return 'mag changed', self.microscope.set_mag(self.d['mag'])
+
+    def _handle_set_camera_length_index(self):
+        """Handle set camera length index"""
+        return 'camera_length set', self.microscope.set_camera_length_index(self.d['CL_index'])
+
+    def _handle_set_defocus(self):
+        """Handle set defocus"""
+        return 'defocus set', self.microscope.set_defocus(self.d['target_df'])
+
+    def _handle_open_column_valve(self):
+        """Handle open column valve"""
+        self.microscope.open_column_valve()
+        if self.microscope._microscope.Vacuum.ColumnValvesOpen:
+            return 'column valve open', None
+        else:
+            return 'column valve NOT open', None
+
+    def _handle_close_column_valve(self):
+        """Handle close column valve"""
+        self.microscope.close_column_valve()
+        if not self.microscope._microscope.Vacuum.ColumnValvesOpen:
+            return 'column valve closed', None
+        else:
+            return 'column valve NOT closed', None
+
+    def _handle_blank_beam(self):
+        """Handle blank beam"""
+        return 'beam blanked', self.microscope.blank()
+
+    def _handle_unblank_beam(self):
+        """Handle unblank beam"""
+        return 'beam unblanked', self.microscope.unblank()
+
+    def _handle_get_screenshot(self):
+        """Handle get screenshot"""
+        return 'screenshot taken', self.microscope.get_screenshot()
+
+    def _handle_get_condenser_stigmator(self):
+        """Handle get condenser stigmator"""
+        return 'get condenser stigmator', self.microscope.get_condenser_stigmator()
+
+    def _handle_set_condenser_stigmator(self):
+        """Handle set condenser stigmator"""
+        return 'set condenser stigmator', self.microscope.set_condenser_stigmator(self.d['cond_stig'])
+
+    def _handle_get_convergence_angle(self):
+        """Handle get convergence angle"""
+        return 'get convergence angle', self.microscope.get_stem_convergence_angle()
+
+    def _handle_get_stem_rotation(self):
+        """Handle get stem rotation"""
+        return 'get stem rotation', self.microscope.get_stem_rotation()
+
+    def _handle_set_stem_rotation(self):
+        """Handle set stem rotation"""
+        return 'set stem rotation', self.microscope.set_stem_rotation(self.d['stem_rotation'])
+
+    def _handle_get_metadata(self):
+        """Handle get metadata"""
+        return 'get metadata', self.microscope.get_metadata()
+
+    def _handle_get_beam_tilt(self):
+        """Handle get beam tilt"""
+        return self.microscope.get_beam_tilt(), None
+
+    def _handle_set_beam_tilt(self):
+        """Handle set beam tilt"""
+        self.microscope.set_beam_tilt(
+            self.d['beam_tilt'],
+            diff_shift=self.d['diff_shift']
+        )
+        return 'set beam tilt', self.microscope.get_beam_tilt()
+
+    def _handle_get_diffraction_shift(self):
+        """Handle get diffraction shift"""
+        return self.microscope.get_diffraction_shift(), None
+
+    def _handle_set_diffraction_shift(self):
+        """Handle set diffraction shift"""
+        self.microscope.set_diffraction_shift(self.d['diff_shift'])
+        return 'set diffraction shift', self.microscope.get_diffraction_shift()
+
     def abChange(self, ab_values, ab_select, C1_defocus_flag, undo=False, bscomp=False):
         ''' 
         Change the aberrations
