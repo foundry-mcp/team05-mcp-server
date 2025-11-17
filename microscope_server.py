@@ -375,7 +375,7 @@ class MicroscopeControl():
         The microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
 
         """
-        stig = self._microscope.Ill.CondenserStigmator
+        stig = self.Ill.CondenserStigmator
         return (stig.X, stig.Y)
 
     def set_condenser_stigmator(self, stig):
@@ -388,10 +388,10 @@ class MicroscopeControl():
         The desired microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
 
         """
-        cur_stig = self._microscope.Ill.CondenserStigmator # get a stig object
+        cur_stig = self.Ill.CondenserStigmator # get a stig object
         cur_stig.X = stig[0]
         cur_stig.Y = stig[1]
-        self._microscope.Ill.CondenserStigmator = cur_stig
+        self.Ill.CondenserStigmator = cur_stig
     
     def get_defocus(self):
         ''' Returns the defocus in meters.
