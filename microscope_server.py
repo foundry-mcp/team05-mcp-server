@@ -16,6 +16,8 @@ import socket
 import json
 import pynetstring
 import time
+import logging
+import traceback
 
 from PIL import Image, ImageGrab
 
@@ -675,6 +677,30 @@ class MicroscopeServer():
         host and port are also optional keywords.
         
         """
+        # Setup logging
+        self.logger = logging.getLogger('MicroscopeServer')
+        self.logger.setLevel(logging.DEBUG)
+
+        # Create formatters
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+
+        # File handler
+        file_handler = logging.FileHandler('microscope_server.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        self.logger.info('Initializing MicroscopeServer')
+
         self.SIM = SIM
         if not self.SIM:
             if CEOS:
@@ -685,7 +711,7 @@ class MicroscopeServer():
         context = zmq.Context()
         serverSocket = context.socket(zmq.REP)
         serverSocket.bind('tcp://*:'+str(port))
-        print('Server Online')
+        self.logger.info(f'Server Online on port {port}')
 
         self.refImage = None
 
@@ -743,24 +769,56 @@ class MicroscopeServer():
             print(qval)
 
         while True:
-            data = serverSocket.recv()
-            self.d = pickle.loads(data)
-            instruction = self.d['type']
-            print(self.d)
+            try:
+                data = serverSocket.recv()
+                self.d = pickle.loads(data)
+                instruction = self.d['type']
+                self.logger.info(f'Received command: {instruction}')
+                self.logger.debug(f'Command data: {self.d}')
 
-            # Use command dispatch dictionary
-            handler = self.command_handlers.get(instruction)
-            if handler:
-                reply_message, reply_data = handler()
-            else:
-                print('Unknown call')
-                reply_message = 'unknown call'
-                reply_data = None
-            
-            reply_d = {'reply_message': reply_message,
-                       'reply_data': reply_data}
-            
-            serverSocket.send(pickle.dumps(reply_d))
+                # Use command dispatch dictionary
+                handler = self.command_handlers.get(instruction)
+                if handler:
+                    try:
+                        reply_message, reply_data = handler()
+                        error = None
+                        self.logger.info(f'Command {instruction} completed successfully')
+                    except Exception as e:
+                        # Log the full error with traceback
+                        self.logger.error(f'Error executing command {instruction}: {str(e)}')
+                        self.logger.error(traceback.format_exc())
+                        # Return error to client
+                        reply_message = f'error executing {instruction}'
+                        reply_data = None
+                        error = str(e)
+                else:
+                    self.logger.warning(f'Unknown command received: {instruction}')
+                    reply_message = 'unknown call'
+                    reply_data = None
+                    error = f'Unknown command: {instruction}'
+
+                reply_d = {'reply_message': reply_message,
+                           'reply_data': reply_data,
+                           'error': error}
+
+                serverSocket.send(pickle.dumps(reply_d))
+
+            except KeyboardInterrupt:
+                self.logger.info('Server shutting down due to keyboard interrupt')
+                break
+            except Exception as e:
+                # Catch any other unexpected errors to prevent server crash
+                self.logger.critical(f'Unexpected error in main loop: {str(e)}')
+                self.logger.critical(traceback.format_exc())
+                # Try to send error response to client
+                try:
+                    reply_d = {'reply_message': 'server error',
+                               'reply_data': None,
+                               'error': str(e)}
+                    serverSocket.send(pickle.dumps(reply_d))
+                except:
+                    self.logger.critical('Failed to send error response to client')
+                    pass
 
     # Command handler methods
     def _handle_ping(self):
