@@ -365,28 +365,28 @@ class MicroscopeControl():
         '''
         return self._microscope.Gun.HTValue
 
-    def get_condensor_stigmator(self):
-        """Returns the current value of the condensor stigmator in meters. This 
+    def get_condenser_stigmator(self):
+        """Returns the current value of the condenser stigmator in meters. This
         is separate from the CEOS stigmator value.
-        
+
         Returns
         -------
         : tuple (float, float)
-        The microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
-        
+        The microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
+
         """
         stig = self._microscope.Ill.CondenserStigmator
         return (stig.X, stig.Y)
 
-    def get_condensor_stigmator(self, stig):
-        """Sets the current value of the condensor stigmator in meters. This 
+    def set_condenser_stigmator(self, stig):
+        """Sets the current value of the condenser stigmator in meters. This
         is separate from the CEOS stigmator value.
-        
+
         Parameters
         ----------
         stig : tuple (float, float)
-        The desired microscope condensor stigmator as a 2-tuple with (A1_x, A1_y) in meters.
-        
+        The desired microscope condenser stigmator as a 2-tuple with (A1_x, A1_y) in meters.
+
         """
         cur_stig = self._microscope.Ill.CondenserStigmator # get a stig object
         cur_stig.X = stig[0]
