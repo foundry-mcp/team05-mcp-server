@@ -711,7 +711,7 @@ class MicroscopeServer():
         context = zmq.Context()
         serverSocket = context.socket(zmq.REP)
         serverSocket.bind('tcp://*:'+str(port))
-        self.logger.info(f'Server Online on port {port}')
+        self.logger.info('Server Online on port {}'.format(port))
 
         self.refImage = None
 
@@ -773,8 +773,8 @@ class MicroscopeServer():
                 data = serverSocket.recv()
                 self.d = pickle.loads(data)
                 instruction = self.d['type']
-                self.logger.info(f'Received command: {instruction}')
-                self.logger.debug(f'Command data: {self.d}')
+                self.logger.info('Received command: {}'.format(instruction))
+                self.logger.debug('Command data: {}'.format(self.d))
 
                 # Use command dispatch dictionary
                 handler = self.command_handlers.get(instruction)
@@ -782,20 +782,20 @@ class MicroscopeServer():
                     try:
                         reply_message, reply_data = handler()
                         error = None
-                        self.logger.info(f'Command {instruction} completed successfully')
+                        self.logger.info('Command {} completed successfully'.format(instruction))
                     except Exception as e:
                         # Log the full error with traceback
-                        self.logger.error(f'Error executing command {instruction}: {str(e)}')
+                        self.logger.error('Error executing command {}: {}'.format(instruction, str(e)))
                         self.logger.error(traceback.format_exc())
                         # Return error to client
-                        reply_message = f'error executing {instruction}'
+                        reply_message = 'error executing {}'.format(instruction)
                         reply_data = None
                         error = str(e)
                 else:
-                    self.logger.warning(f'Unknown command received: {instruction}')
+                    self.logger.warning('Unknown command received: {}'.format(instruction))
                     reply_message = 'unknown call'
                     reply_data = None
-                    error = f'Unknown command: {instruction}'
+                    error = 'Unknown command: {}'.format(instruction)
 
                 reply_d = {'reply_message': reply_message,
                            'reply_data': reply_data,
@@ -808,7 +808,7 @@ class MicroscopeServer():
                 break
             except Exception as e:
                 # Catch any other unexpected errors to prevent server crash
-                self.logger.critical(f'Unexpected error in main loop: {str(e)}')
+                self.logger.critical('Unexpected error in main loop: {}'.format(str(e)))
                 self.logger.critical(traceback.format_exc())
                 # Try to send error response to client
                 try:
