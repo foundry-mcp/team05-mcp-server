@@ -24,6 +24,7 @@ from matplotlib.colors import LogNorm, NoNorm
 import mfid
 
 data = {} # a dictionary that holds all the data.
+metadata = {} # a dictionary that holds all the metadata
 
 mcp = FastMCP("NCEMPY MCP")
 
@@ -64,7 +65,7 @@ class ProcessPlotter:
 
 @mcp.tool()
 def test_this_server(from_llm:str):
-    """THis tool simply prints what the LLM sends
+    """This tool simply prints what the LLM sends
     
     Parameters
     ----------
@@ -75,10 +76,11 @@ def test_this_server(from_llm:str):
 
 @mcp.tool()
 def load_image(directory:str, file_name:str):
-    """A function that reads a file using ncempy. The data
-    stays on the server and is stored in a dictionary. Each data set
-    can then be accessed using a key. This key is returned when the
-    file is loaded.
+    """A function that reads a file using ncempy. The image data
+    and metadata stays on the server and is stored in two 
+    separate dictionaries called data and metadata. Imasge data and
+    its metadata can then be accessed using a key that was returned
+    to the LLM when this function is called.
     
     Parameters
     ----------
@@ -90,14 +92,54 @@ def load_image(directory:str, file_name:str):
     Returns
     -------
     : str
-    The file_id of the file which is a key used to access the data later.
+    The file_id of the file which is a key used to access the data 
+    and metadata later.
     """
     file_path = Path(directory) / Path(file_name)
-    print(file_path)
+    print(f'loading {file_path}')
     dd = ncempy.read(file_path)
-    file_id = new_id = mfid.mfid()
-    data[file_id[0]] = dd
-    return file_id[0]
+    md = get_metadata(file_path)
+    file_id = mfid.mfid()[0]
+    data[file_id] = dd['data']
+    metadata[file_id] = md
+    metadata[file_id]['pixel_size'] = dd['pixelSize']
+    metadata[file_id]['pixel_unit'] = dd['pixelUnit']
+    return file_id
+
+def get_metadata(file_path):
+    """Get metdata for a specific file. This is
+    called by load_image.
+    
+    Only EMD and DM3/4 data is enabled.
+    """
+    
+    if file_path.suffix == '.dm4' or file_path.suffix == '.dm3':
+        with ncempy.io.dm.fileDM(file_path) as f0:
+            md = f0.getMetadata(0)
+    elif file_path.suffix == '.emd':
+        with ncempy.io.emd.fileEMD(file_path) as f0:
+            md = f0.getMetadata(0)
+    return md
+
+@mcp.tool()
+def retrieve_metadata(file_id:str):
+    """ Returns the metadata of a data set in memory
+
+    Parameters
+    ----------
+    file_id : str
+    The file_id to use to access the metadata
+    
+    Returns
+    -------
+    : dict
+    A dictionary with different metadata values for the experiment.
+    Different file types will have metadata written in different ways. 
+    However, the pixel size and unit are alwayus available with the keys
+    pixelSize and pixelUnit.
+    """
+    return metadata[file_id]
+    
 
 @mcp.tool()
 def list_data_files(directory:str):
@@ -118,7 +160,7 @@ def list_data_files(directory:str):
     return [str(ii) for ii in dir_path.glob('*.*')]
 
 @mcp.tool()
-def get_statistics(file_id:str):
+def calculate_image_statistics(file_id:str):
     """Calculates the statistics of the loaded image indicated by
     a file_id. This includes the intensity maximum, intensity minimum,
     intensity standard deviation, the image shape in the x direction,
@@ -135,8 +177,8 @@ def get_statistics(file_id:str):
     A tuple with the maximum, minumum, standard deviation, image shape y, images shape x, and dtype
     """
     dd = data[file_id]
-    mm = (dd['data'].max(), dd['data'].min(), dd['data'].std(), 
-          dd['data'].shape[0], dd['data'].shape[1], dd['data'].dtype)
+    mm = (dd.max(), dd.min(), dd.std(), 
+          dd.shape[0], dd.shape[1], dd.dtype)
     return mm
 
 @mcp.tool()
@@ -150,7 +192,7 @@ def plot_data(file_id:str):
     The file_id to use to access the data
     """
     print('plotting')
-    image = data[file_id]['data']
+    image = data[file_id]
     norm = 'linear'
     plotter.plot((image, norm))
 
@@ -166,7 +208,7 @@ def plot_data_fft(file_id:str):
     The file_id to use to access the data
     """
     print('plotting fft')
-    image = np.abs(np.fft.fftshift(np.fft.fft2(data[file_id]['data'])))
+    image = np.abs(np.fft.fftshift(np.fft.fft2(data[file_id])))
     norm = 'log'
     plotter.plot((image, norm))
     
@@ -181,7 +223,7 @@ def get_loaded_data():
     """
     return [kk for kk in data.keys()]
 
-@mcp.tool()
+#@mcp.tool()
 def get_emd_metadata(directory:str, file_name:str):
     """Returns the metadata for a data set 
     that is in the Berkeley EMD format.
@@ -219,7 +261,7 @@ def get_emd_metadata(directory:str, file_name:str):
             md['pixel_size_x_unit'] = dims[1][2].replace('_', '')
             
             md['data_shape'] = (dims[0][0].shape[0], dims[1][0].shape[0])
-            md['data_type'] = f0.list_emds[0]['data'].dtype
+            md['data_type'] = f0.list_emds[0].dtype
             
         except:
             print('cant get pixel size')
@@ -227,7 +269,7 @@ def get_emd_metadata(directory:str, file_name:str):
         
     return md
     
-@mcp.tool()
+#@mcp.tool()
 def get_dm_metadata(directory:str, file_name:str, num=0):
     """Returns the metadata for a data set 
     that is in the Gatan DM3 or DM4 format.
@@ -255,8 +297,9 @@ def get_dm_metadata(directory:str, file_name:str, num=0):
 
 @mcp.tool()
 def delete_data_in_memory():
-    """This frees all data in memory."""
+    """This frees all data and metdata in memory."""
     data = {}
+    metadata = {}
 
 if __name__ == "__main__":
     
