@@ -211,6 +211,48 @@ def put_note(distiller_scan_id: int, note: str):
     except RequestException as req_err:
         raise RequestException(f"Request exception occurred: {req_err}")
 
+@mcp.tool()
+def add_metadata(distiller_scan_id: int, metadata: dict[str, Any]):
+    """ Update the metadata field in Distiller. This can be used to
+    store updated or supplemental metadata for a 4D STEM scan.
+
+    Parameters
+    ----------
+    distiller_scan_id : int
+        The Disitller scan id. This is a unique ID attached to each data set in the database.
+    metadata : dict
+        The metadata to merge into the existing metadata field in Distiller.
+
+    Returns
+    -------
+    : Scan
+        A Scan class object with information about the scan that was changed
+    """
+    import json
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/scans/{distiller_scan_id}"
+    params = {"merge": True}
+
+    try:
+        response = requests.patch(
+            url,
+            headers=headers,
+            params=params,
+            data=json.dumps({"metadata": metadata}),
+        )
+        response.raise_for_status()
+        json_data = response.json()
+        print(json_data)
+        return Scan(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
 def get_scan_by_id_test(distiller_scan_id: int):
     """ Get information about a data set in Distiller based 
     on the Distiller ID number
