@@ -47,9 +47,9 @@ import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
 
-@mcp.resource("file://TEAM0.5_parameters.txt", mime_type="text/plain")
+@mcp.resource("file://TEAM0.5_Parameters.md", mime_type="text/markdown")
 def get_team05_parameter_configurations():
-    with open('TEAM0.5_parameters.txt', mode="r") as f:
+    with open('TEAM0.5_Parameters.md', mode="r") as f:
         info = f.read()
         return info
 
@@ -943,7 +943,7 @@ def get_stem_rotation_angle():
         The STEM scanning rotation angle in radisns
     
     '''
-    d = {'type': 'get_stem_rotation_angle'}
+    d = {'type': 'get_stem_rotation'}
     Response = microscope_client.send_traffic(d)
     if Response['reply_data'] is None:
         raise Exception('Command failed.')
@@ -962,7 +962,7 @@ def set_stem_rotation_angle(rotation_angle:float=0.0):
         A response telling you the command succeeded
     
     '''
-    d = {'type': 'set_stem_rotation_angle', 'stem_rotation_angle':rotation_angle}
+    d = {'type': 'set_stem_rotation', 'stem_rotation':rotation_angle}
     Response = microscope_client.send_traffic(d)
     reply_message = Response['reply_message']
     return reply_message
