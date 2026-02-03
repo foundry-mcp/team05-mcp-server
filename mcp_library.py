@@ -1051,14 +1051,18 @@ def acquire_4D_scan(width:int, height:int, scan_rotation:float, nread:int):
     '''
     params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
-    gatan_client.send_traffic(('acquire_4dcamera_scan', params))
+    response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
+    print(response)
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
+    #return response
 
 @mcp.tool()
-def acquire_haadf_dm(dwell_time:float, width:int, height:int, scan_rotation:float, signal_index:int):
+def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_rotation:float=0, signal_index:int=0):
     '''
-    Acquire a STEM image using DigitalMicrograph. The TEAM 0.5 only has a HAADF detector such 
-    that the signal_index can only be set to 0.
+    Acquire a STEM image using DigitalMicrograph (DM). The TEAM 0.5 only has a HAADF detector such 
+    that the signal_index can only be set to 0. It is generally preferred to use the 
+    acquire_image tool. This is only for convenience.
+    
     
     Parameters
     ----------
@@ -1075,13 +1079,37 @@ def acquire_haadf_dm(dwell_time:float, width:int, height:int, scan_rotation:floa
      
     Returns
     -------
-    None.
+    A tuple of the image intensity minimum, maximum, and standard deviation
     
     '''
-    params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
+    params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation,
+              'dwell_time':dwell_time, 'signal_index':signal_index}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
-    gatan_client.send_traffic(('acquire_stem_scan', params))
+    response = gatan_client.send_traffic(('acquire_stem_scan', params))
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
+    
+    # extract image data and metadata from the response
+    (image, metadata) = response[1]
+    calx = metadata['calX']
+    caly = metadata['calY']
+    cal_unit_name = metadata['units']
+    image_min = image.min()
+    image_max = image.max()
+    image_std = image.std()
+
+    new_id = mfid.mfid()
+    dir_path = Path('D:/user_data/Claude')
+    file_path = dir_path / Path(f'{new_id[0]}.emd')
+    write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
+    
+    return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
+    
+@mcp.tool()
+def push_gatan_button():
+    '''
+    This will push the gatan button on the NCEM button pusher.
+    '''
+    gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
 
 class Microscope_Client():
     '''Communicates with the server on the microscope PC.'''
