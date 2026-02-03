@@ -14,7 +14,7 @@ This is run on the TEAM 0.5 microscope PC using the winpython 3.4 command prompt
 # gatan_server.py
 The zeroMQ based server that communicates with the Gatan Digital Micrograph software on the Gatan PC. This server writes templated .s scripts and executes them in DM. It relies on the dm_scripts.py to write the templates.
 
-This is run on the Gatan PC. Currently there is a w7server shortcut being used, but that is old. We need to update to this version.
+This is run on the Gatan PC using a shortcut on the desktop. Files from this repo are copied to the local Documents folder.
 
 # mcp_distiller.py
 A MCP agent that can get information from the Distiller database. You can get a range of scan_ids or data from a specific data set id.
