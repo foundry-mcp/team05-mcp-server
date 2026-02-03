@@ -33,7 +33,7 @@ class GatanServer():
         else:
             self.DMSCRIPT = self.dir_path / Path('4Dcamera_automation_acquireScan_temp.s')
             self.dm4_filename = self.dir_path / Path('latest_4Dscan.dm4')
-            self.haadf_filename = 'latest_haadf.dm4'
+            self.haadf_filename = self.dir_path / 'latest_haadf.dm4'
             self.MBSCRIPT = self.dir_path / Path('move_beam.s')
         
         # Create button pusher client
