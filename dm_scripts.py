@@ -1,29 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-A function that returns templated gatan scripts to call from python.
+Function that return templated Gatan DigitalMicrograph scripts. These
+scripts can then be written to disk as .s files and executed using
+subprocess.call from python.
+
+See gatan_server.py for the server implementation.
 """
 
-def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotation=0):
-    """ Returns a properly formateed script to acquire a 4D-STEM scan
-    using the 4D Camera
+def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
+    """ A script to acquire a 4D-STEM scan using the 4D Camera.
     
     Parameters
     ----------
-    pwidth: int
-    The width of the 4D-STEM scan. This is the fast scan direction
+    pwidth : int
+        The width of the 4D-STEM scan. This is the fast scan direction.
     pheight : int
-    The height of the 4D-STEM scan. This is the slow scan direction
-    emd: bool
-    Deprecated and not used
-    nread:int
-    The number of frames to acquire at each probe position
-    rotation: float
-    The STEM rotation in degrees.
+        The height of the 4D-STEM scan. This is the slow scan direction.
+    nread : int
+        The number of frames to acquire at each probe position.
+    rotation : float
+        The STEM scan rotation in degrees.
     
     Returns
     -------
     : str
-    The string with the parameters written in the format of a DM script.
+        A string that contains the script ready to write to disk and be executed.
     
     """
     script_text =  f"""// Acquire a 4D camera scan.
@@ -44,7 +45,7 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         // Other system variables
         number dataType = 4 // 4 byte data
         number signalIndex = 0
-        number pixelTime= 10 // microseconds, only for HAADF
+        number pixelTime = 11 // microseconds, only for HAADF
         number lineSync = 0 //
 
         number write_to_file = 1 // not implemented; use to fill ram with multiple scans in a row
@@ -54,7 +55,6 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
         ipAddressPlusPort = "131.243.3.25:42003" // the format is quad IP address, colon, port number.
 
         // User must synchronize with 4D Camera output manually
-        // SetPersistentNumberNote("4D_scannum", XXX)  //example. copy to new script and run
         number scan_number
         GetPersistentNumberNote("4D_scannum", scan_number)
 
@@ -126,7 +126,7 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
 
         SetName(image0, "scan" + scan_number)
 
-        // Automatically save data to sync directory
+        // Automatically save data to Distiller sync directory
         SaveAsGatan(image0, "X:\\scan" + scan_number + ".dm4")
 
         // For server to read and return
@@ -134,92 +134,99 @@ def dynamic_4D_camera_script(pwidth=256, pheight=256, emd=None, nread=1, rotatio
 
         SetPersistentNumberNote("4D_scannum", scan_number+1)
 
-        result("4Dcamera scan done\\n")
+        result("4D Camera scan done\\n")
         """
     return script_text
+
+def move_beam_script(dX, dY):
+    """ A Gatan DM script that moves the beam position by a desired amount
     
-def dynamic_4D_camera_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0):
-    """ Returns a properly formateed script to acquire a SSTEM scan
-    using the HAADF detector.
+    TODO: Determine whether this is in pixel or calibrated coordinates.
     
     Parameters
     ----------
-    dwell_time : float
-    The dwell time in seconds.
-    pwidth: int
-    The width of the 4D-STEM scan. This is the fast scan direction
-    pheight : int
-    The height of the 4D-STEM scan. This is the slow scan direction
-    nread:int
-    The number of frames to acquire at each probe position
-    rotation: float
-    The STEM rotation in degrees.
+    dX : float
+        The distance to move the beam in the fast scan direction in pixels.
+    dY : float
+        The distance to move the beam in the slow scan direction in pixels.
     
     Returns
     -------
     : str
-    The string with the parameters written in the format of a DM script.
+        A string that contains the script ready to write to disk and be executed.
+    """
+    script_text = f""" // move beam
+    
+                image im := GetFrontImage()
+                String imName = im.ImageGetName()
+    
+                number X, Y, currX, currY
+    
+                DSGetBeamDSPosition(currX, currY)
+                DSCalcImageCoordFromDS(im, currX, currY, X, Y)
+                number newX = X+{dX}
+                number newY = Y+{dY}
+                DSPositionBeam(im, newX, newY)
+                Result("Beam moved by {dX}, {dY}\\n")
+                """
+    return script_text
+
+def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, signal_index=0):
+    """ A script to acquire a STEM scan using the HAADF detector.
+    
+    Parameters
+    ----------
+    dwell_time : float
+        The dwell time in seconds.
+    pwidth: int
+        The width of the 4D-STEM scan in pixels. This is the fast scan direction
+    pheight : int
+        The height of the 4D-STEM scan in pixels. This is the slow scan direction
+    nread : int
+        The number of frames to acquire at each probe position
+    rotation : float
+        The STEM scan rotation in degrees.
+    signal_index : int
+        The signal index of the desired STEM detector. On TEAM 0.5 0 is the HAADF.
+    
+    Returns
+    -------
+    : str
+        A string that contains the script ready to write to disk and be executed.
     
     """
     script_text =  f"""//Acquire a STEM image
-    // Setup scan parameters
-    // Digiscan
-    number dataType = 4 // 4 byte data
-    number width = {pwidth} // pixel, final 4D scan image is width + 1
-    number height = {pheight} // pixel
-
-    number signalIndex = 0
-    number rotation = {rotation} // degree, 0 matches FEI software
-    number pixelTime= {dwell_time}*1e6 // microseconds
-    number lineSync = 0 //
-
-    //Number DSCreateParameters( Number width, Number height, Number rotation, Number pixelTime, Boolean lineSynchEnabled )
-    number p = DSCreateParameters(width, height, rotation, pixelTime, 0)
-
-    // Connect to HAADF
-    //Boolean DSSetParametersSignal( Number paramID, Number signalIndex, Number dataType, Boolean selected, Number imageID )
-    DSSetParametersSignal(p, signalIndex, 4, 1, 0)
-
-    // Start the acquisition
-    //void DSStartAcquisition( Number paramID, Boolean continuous, Boolean synchronous )
-    // synchronoys = 0 to return immediately allowing 4D camerat to start the scan
-    DSStartAcquisition(p, 0, 0)
-
-    image image0 := GetFrontImage()
-
-    dssetexternalpixelclock(0) // 0 for normal
-    DSDeleteParameters(p)
-
-    // For server to read and return
-    SaveAsGatan(image0, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_HAADF_scan.dm4")
-
-    result("HAADF scan done\\n")
-    """
+                    // Setup scan parameters
+                    // Digiscan
+                    number dataType = 4 // 4 byte data
+                    number width = {pwidth} // pixel, final 4D scan image is width + 1
+                    number height = {pheight} // pixel
+                
+                    number signalIndex = {signal_index}
+                    number rotation = {rotation} // degree, 0 matches FEI software
+                    number pixelTime= {dwell_time}*1e6 // microseconds
+                    number lineSync = 0 //
+                
+                    //Number DSCreateParameters( Number width, Number height, Number rotation, Number pixelTime, Boolean lineSynchEnabled )
+                    number p = DSCreateParameters(width, height, rotation, pixelTime, 0)
+                
+                    // Connect to HAADF
+                    //Boolean DSSetParametersSignal( Number paramID, Number signalIndex, Number dataType, Boolean selected, Number imageID )
+                    DSSetParametersSignal(p, signalIndex, 4, 1, 0)
+                
+                    // Start the acquisition
+                    //void DSStartAcquisition( Number paramID, Boolean continuous, Boolean synchronous )
+                    // synchronoys = 0 to return immediately allowing 4D camerat to start the scan
+                    DSStartAcquisition(p, 0, 0)
+                
+                    image image0 := GetFrontImage()
+                
+                    dssetexternalpixelclock(0) // 0 for normal
+                    DSDeleteParameters(p)
+                
+                    // For server to read and return
+                    SaveAsGatan(image0, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_HAADF_scan.dm4")
+                
+                    result("HAADF scan done\\n")
+                    """
     return script_text
-
-//Acquire a STEM image
-// Setup scan parameters
-// Digiscan
-number dataType = 4 // 4 byte data
-number width = {width} // pixel, final 4D scan image is width + 1
-number height = {height} // pixel
-
-number signalIndex = 0
-number rotation = {rotation} // degree, 0 matches FEI software
-number pixelTime= {dwell_time} // microseconds, only for HAADF
-number lineSync = 0 //
-
-//Number DSCreateParameters( Number width, Number height, Number rotation, Number pixelTime, Boolean lineSynchEnabled )
-number p = DSCreateParameters(width, height, rotation, pixelTime, 0)
-
-// Connect to HAADF
-//Boolean DSSetParametersSignal( Number paramID, Number signalIndex, Number dataType, Boolean selected, Number imageID )
-DSSetParametersSignal(p, signalIndex, 4, 1, 0)
-
-// Start the acquisition
-//void DSStartAcquisition( Number paramID, Boolean continuous, Boolean synchronous )
-// synchronoys = 0 to return immediately allowing 4D camerat to start the scan
-DSStartAcquisition(p, 0, 0)
-
-image image0 := GetFrontImage()
-
