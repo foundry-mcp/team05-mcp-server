@@ -199,12 +199,12 @@ def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, si
                     // Setup scan parameters
                     // Digiscan
                     number dataType = 4 // 4 byte data
-                    number width = {pwidth} // pixel, final 4D scan image is width + 1
-                    number height = {pheight} // pixel
+                    number width = {pwidth} // pixels
+                    number height = {pheight} // pixels
                 
                     number signalIndex = {signal_index}
                     number rotation = {rotation} // degree, 0 matches FEI software
-                    number pixelTime= {dwell_time}*1e6 // microseconds
+                    number pixelTime = {dwell_time}*1e6 // microseconds
                     number lineSync = 0 //
                 
                     //Number DSCreateParameters( Number width, Number height, Number rotation, Number pixelTime, Boolean lineSynchEnabled )
@@ -213,20 +213,23 @@ def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, si
                     // Connect to HAADF
                     //Boolean DSSetParametersSignal( Number paramID, Number signalIndex, Number dataType, Boolean selected, Number imageID )
                     DSSetParametersSignal(p, signalIndex, 4, 1, 0)
-                
+                    
+                    DSFinishAcquisition() // wait for current scan to finish
+                    
                     // Start the acquisition
                     //void DSStartAcquisition( Number paramID, Boolean continuous, Boolean synchronous )
-                    // synchronoys = 0 to return immediately allowing 4D camerat to start the scan
-                    DSStartAcquisition(p, 0, 0)
-                
-                    image image0 := GetFrontImage()
-                
-                    dssetexternalpixelclock(0) // 0 for normal
+                    // synchronoys = 1 to make this a blocking call
+                    DSStartAcquisition(p, 0, 1)
+                    
+                    number image_id = DSGetAcquiredImageID(signalIndex)
+                    image haadf_image := GetImageFromID(image_id)
+
                     DSDeleteParameters(p)
                 
                     // For server to read and return
-                    SaveAsGatan(image0, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_HAADF_scan.dm4")
+                    result("saving scan...")
+                    SaveAsGatan(haadf_image, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_haadf.dm4")
                 
-                    result("HAADF scan done\\n")
+                    result("done\\n")
                     """
     return script_text

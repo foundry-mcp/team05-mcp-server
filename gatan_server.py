@@ -13,36 +13,44 @@ import ncempy.io as nio
 import os
 from subprocess import call
 import time
+import json
 
 import dm_scripts
-
-# Impor the functions for the TIA/Gatan robot
-sys.path.append('C:/Users/VALUEDGATANCUSTOMER/Documents/Maestro')
-from TEAM05_tia_gatan import set_TIA2, set_Gatan  # might need to set path to library
 
 class GatanServer():
     def __init__(self, sim=False, port=13579):
         
         self.SIM = sim # indicate simulation mode
-        self.is_gatan = False # start with robot in TIA position
-
+        
         # The path where the dm scripts will be written
         self.dir_path = Path('C:/Users/VALUEDGATANCUSTOMER/Documents/automation/')
         
         if self.SIM:
             self.DMSCRIPT = '4Dcamera_automation_acquireScan_temp.s'
             self.dm4_filename = 'latest_4Dscan.dm4'
+            self.haadf_filename = 'latest_haadf.dm4'
             self.MBSCRIPT = 'move_beam.s'
         else:
             self.DMSCRIPT = self.dir_path / Path('4Dcamera_automation_acquireScan_temp.s')
             self.dm4_filename = self.dir_path / Path('latest_4Dscan.dm4')
+            self.haadf_filename = 'latest_haadf.dm4'
             self.MBSCRIPT = self.dir_path / Path('move_beam.s')
         
+        # Create button pusher client
+        button_pusher_context = zmq.Context()
+        self.button_pusher_socket = button_pusher_context.socket(zmq.REQ)
+        self.button_pusher_socket.connect("tcp://localhost:5555")
+        
+        # Create server
         context = zmq.Context()
         self.serverSocket = context.socket(zmq.REP)
         self.serverSocket.bind('tcp://*:'+str(port))
         print('Server Online')
-
+        
+        # start with TIA
+        self.send_command(self.button_pusher_socket, {"action": "set_TIA2"})
+        self.is_gatan = False 
+        
         while True:
             
             data = self.serverSocket.recv()
@@ -74,6 +82,8 @@ class GatanServer():
                 prev_is_gatan = self.is_gatan
                 if not self.is_gatan:
                     self.is_gatan = self.set_is_gatan(True)
+                print('HI')
+                print(params)
                 ret = self.acquire_stem_scan(params)
                 if self.is_gatan != prev_is_gatan:
                     self.is_gatan = self.set_is_gatan(prev_is_gatan)
@@ -124,7 +134,7 @@ class GatanServer():
         ----------
         params : dict
             The parameter dictionary for acquiring a 4D-STEM dataset with the 4D Camera.
-            It requires dwell_time, pwidth, pheight, rotation, and signal_index keys.
+            It requires dwell_time, width, height, rotation, and signal_index keys.
 
         Returns
         -------
@@ -133,14 +143,14 @@ class GatanServer():
         """
         self.call_stem_script(params)
         
-        dm4_file = nio.dm.dmReader(self.dm4_filename)
+        dm4_file = nio.dm.dmReader(self.haadf_filename)
         data = dm4_file['data']
-        with nio.dm.fileDM(self.dm4_filename) as f1:
+        with nio.dm.fileDM(self.haadf_filename) as f1:
             allTags = f1.allTags
         metadata = {'alltags': allTags,
                   'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
                   'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
-                  '4Dscan number': allTags.get('.ImageList.2.ImageTags.4Dcamera Parameters.scan_number', None),
+                  'units': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Units', ''),
                   'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
                   }
         print("HAADF data shape = {}".format(data.shape))
@@ -149,24 +159,18 @@ class GatanServer():
     def call_stem_script(self, params):
         """ Acquires a STEM datset"""
         try:
-            dms = dm_script.acquire_stem_script(dwell_time=params['dwell_time'],
+            dms = dm_scripts.acquire_stem_script(dwell_time=params['dwell_time'],
                                                 pwidth=params['pwidth'], pheight=params['pheight'], 
                                                 rotation=params['rotation'], signal_index=params['signal_index'])
             print('writing DM script')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
-            if not self.SIM:
-                # delete any previous dm4 files
-                if self.dm4_filename.exists():
-                    self.dm4_filename.unlink()
-                # call script
-                print('calling DM script')
-                with open('NUL', 'w') as _:
-                    call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
-                # wait for dm4 file to appear
-                while not self.dm4_filename.exists():
-                    time.sleep(0.1)
-                print('done')
+
+            # call script
+            print('calling DM script')
+            with open('NUL', 'w') as _:
+                call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
+            print('haadf scan finished')
         except:
             raise
     
@@ -217,30 +221,36 @@ class GatanServer():
             print('writing DM script')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
-            if not self.SIM:
-                # delete any previous dm4 files
-                if self.dm4_filename.exists():
-                    self.dm4_filename.unlink()
-                # call script
-                print('calling DM script')
-                with open('NUL', 'w') as _:
-                    call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
-                # wait for dm4 file to appear
-                while not self.dm4_filename.exists():
-                    time.sleep(0.1)
-                print('done')
+
+            # call script
+            print('calling DM script')
+            with open('NUL', 'w') as _:
+                call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
+            print('done')
         except:
             raise
 
-    def set_is_gatan(self, ig):
+    def set_is_gatan(self, push_gatan):
+        """
+        This sends a message to the button pusher to push the Gatan button
+        or the TIA button.
+        """
         if not self.SIM:
-            if ig:
-                set_Gatan()
+            if push_gatan:
+                self.send_command(self.button_pusher_socket, {"action": "set_Gatan"})
             else:
-                set_TIA2()
-            return ig
+                self.send_command(self.button_pusher_socket, {"action": "set_TIA2"})
+            return push_gatan
         else:
-            return ig
-
+            return push_gatan
+    
+    def send_command(self, soc, command):
+        """Send a command to the button pusher and print the response"""
+        print(f"\n>>> Sending: {command}")
+        soc.send_string(json.dumps(command))
+        response = json.loads(soc.recv_string())
+        print(f"<<< Response: {response}")
+        return response
+    
 if __name__ == '__main__':
     ms = GatanServer()
