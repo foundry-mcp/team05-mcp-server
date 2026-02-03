@@ -103,9 +103,10 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         result(reply)
 
         EMSetBeamBlanked(1)
-
-        image image0 := GetFrontImage()
-
+        
+        number image_id = DSGetAcquiredImageID(signalIndex)
+        image image0 := GetImageFromID(image_id)
+                    
         dssetexternalpixelclock(0) // 0 for normal
         DSDeleteParameters(p)
 
@@ -219,7 +220,10 @@ def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, si
                     // Start the acquisition
                     //void DSStartAcquisition( Number paramID, Boolean continuous, Boolean synchronous )
                     // synchronoys = 1 to make this a blocking call
+                    EMSetBeamBlanked(0)
+                    sleep(0.1)
                     DSStartAcquisition(p, 0, 1)
+                    EMSetBeamBlanked(1)
                     
                     number image_id = DSGetAcquiredImageID(signalIndex)
                     image haadf_image := GetImageFromID(image_id)
