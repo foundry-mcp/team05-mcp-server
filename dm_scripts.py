@@ -41,7 +41,8 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         number nread = {nread} // frames per scan position
         number nskip = 0 // number to skip between probe positions
         number nflyback = 300 // typically this is set to 300 (# frames for flyback time)
-
+        number npause = 0 // 
+        
         // Other system variables
         number dataType = 4 // 4 byte data
         number signalIndex = 0
@@ -106,7 +107,7 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         
         number image_id = DSGetAcquiredImageID(signalIndex)
         image image0 := GetImageFromID(image_id)
-                    
+        
         dssetexternalpixelclock(0) // 0 for normal
         DSDeleteParameters(p)
 
@@ -114,8 +115,6 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         TagGroup tg = image0.ImageGetTagGroup()
         number index
         taggroup tg_4d = tg.TagGroupCreateNewLabeledGroup("4Dcamera Parameters")
-        index = tg_4d.TagGroupCreateNewLabeledTag("npause")
-        tg_4d.TagGroupSetIndexedTagAsFloat( index, npause)
         index = tg_4d.TagGroupCreateNewLabeledTag("nread")
         tg_4d.TagGroupSetIndexedTagAsFloat( index, nread)
         index = tg_4d.TagGroupCreateNewLabeledTag("nskip")

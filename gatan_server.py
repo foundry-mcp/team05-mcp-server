@@ -216,8 +216,8 @@ class GatanServer():
             A tuple containing the STEM data as a numpy array and metadata as a tuple.
         """
         try:
-            dms = dm_script.dynamic_dm_script(pwidth=params['pwidth'], pheight=params['pheight'], 
-                                              rotation=params['rotation'], nread=params['nread'])
+            dms = dm_scripts.acquire_4Dcamera_script(pwidth=params['pwidth'], pheight=params['pheight'], 
+                                                     rotation=params['rotation'], nread=params['nread'])
             print('writing DM script')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
