@@ -78,8 +78,16 @@ if __name__ == "__main__":
     
     gatan_client = Gatan_Client(ghost, gport) # communicates with the Gatan PC
     
-    params = {'pwidth':512, 'pheight':512, 'rotation':0, 'dwell_time':1e-6,'signal_index':0}
+    # Test DM HAADF acquire
+    #params = {'pwidth':512, 'pheight':512, 'rotation':0, 'dwell_time':1e-6,'signal_index':0}
     #gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
-    response = gatan_client.send_traffic(('acquire_stem_scan', params))
+    #response = gatan_client.send_traffic(('acquire_stem_scan', params))
+    #print(response)
+    #gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
+    
+    # Test 4D acquire
+    params = {'pwidth':128, 'pheight':128, 'rotation':0, 'nread':2}
+    #gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
+    response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
     print(response)
     #gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
