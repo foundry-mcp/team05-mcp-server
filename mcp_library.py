@@ -1052,7 +1052,7 @@ def acquire_4D_scan(width:int, height:int, scan_rotation:float, nread:int):
     params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
     response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
-    print(response)
+    #print(response)
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
     #return response
 
