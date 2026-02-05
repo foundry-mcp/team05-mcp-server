@@ -5,14 +5,11 @@ to disk and executes them through a system call to
 DigitalMicrograph.exe.
 """
 
-import sys
 from pathlib import Path
 import pickle
 import zmq
 import ncempy.io as nio
-import os
 from subprocess import call
-import time
 import json
 import logging
 import traceback
