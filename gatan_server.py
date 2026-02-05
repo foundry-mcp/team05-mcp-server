@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 A zmq server that writes Gatan DigitalMicrograph scripts
-to disk and executes them through a system call to 
+to disk and executes them through a system call to
 DigitalMicrograph.exe.
 """
 
@@ -14,17 +14,53 @@ import os
 from subprocess import call
 import time
 import json
+import logging
+import traceback
+import argparse
 
 import dm_scripts
 
 class GatanServer():
     def __init__(self, sim=False, port=13579):
-        
+        """A server that accepts commands to control Gatan DigitalMicrograph.
+
+        Parameters
+        ----------
+        sim : bool
+            If True, simulation mode is enabled (no actual DM scripts executed).
+        port : int
+            The port to open for the server. The server will bind that port
+            on all available interfaces.
+        """
+        # Setup logging
+        self.logger = logging.getLogger('GatanServer')
+        self.logger.setLevel(logging.DEBUG)
+
+        # Create formatters
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+
+        # File handler
+        file_handler = logging.FileHandler('gatan_server.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        self.logger.info('Initializing GatanServer')
+
         self.SIM = sim # indicate simulation mode
-        
+
         # The path where the dm scripts will be written
         self.dir_path = Path('C:/Users/VALUEDGATANCUSTOMER/Documents/automation/')
-        
+
         if self.SIM:
             self.DMSCRIPT = '4Dcamera_automation_acquireScan_temp.s'
             self.dm4_filename = 'latest_4Dscan.dm4'
@@ -35,77 +71,153 @@ class GatanServer():
             self.dm4_filename = self.dir_path / Path('latest_4Dscan.dm4')
             self.haadf_filename = self.dir_path / 'latest_haadf.dm4'
             self.MBSCRIPT = self.dir_path / Path('move_beam.s')
-        
+
         # Create button pusher client
         button_pusher_context = zmq.Context()
         self.button_pusher_socket = button_pusher_context.socket(zmq.REQ)
         self.button_pusher_socket.connect("tcp://localhost:5555")
-        
+
         # Create server
         context = zmq.Context()
         self.serverSocket = context.socket(zmq.REP)
         self.serverSocket.bind('tcp://*:'+str(port))
-        print('Server Online')
-        
+        self.logger.info('Server Online on port {}'.format(port))
+
         # start with TIA
         self.send_command(self.button_pusher_socket, {"action": "set_TIA2"})
-        self.is_gatan = False 
-        
-        while True:
-            
-            data = self.serverSocket.recv()
-            command, params = pickle.loads(data)
-            
-            message = None
-            
-            print(f'received command: {command}')
-            
-            if command == 'tia_or_gatan':
-                message = ('is_gatan', self.is_gatan)
-            elif command == 'set_gatan':
-                self.is_gatan = self.set_is_gatan(True)
-                message = ('is_gatan', self.is_gatan)
-            elif command == 'set_tia':
-                self.is_gatan = self.set_is_gatan(False)
-                message = ('is_gatan', self.is_gatan)
-            elif command == 'acquire_4dcamera_scan':
-                # Acquire 4D STEM data
-                prev_is_gatan = self.is_gatan
-                if not self.is_gatan:
-                    self.is_gatan = self.set_is_gatan(True)
-                ret = self.acquire_4dcamera_scan(params)
-                if self.is_gatan != prev_is_gatan:
-                    self.is_gatan = self.set_is_gatan(prev_is_gatan)
-                message = ('gatan_data', ret)
-            elif command == 'acquire_stem_scan':
-                # Acquire HAADF-STEM data
-                prev_is_gatan = self.is_gatan
-                if not self.is_gatan:
-                    self.is_gatan = self.set_is_gatan(True)
-                print('HI')
-                print(params)
-                ret = self.acquire_stem_scan(params)
-                if self.is_gatan != prev_is_gatan:
-                    self.is_gatan = self.set_is_gatan(prev_is_gatan)
-                message = ('gatan_data', ret)
-            elif command == 'set_roi':
-                roi = params
-                message = ('set_roi', roi)
-            elif command == 'move_beam':
-                print(params[0], params[1])
-                self.move_beam(params[0], params[1])
-                message = ('beam moved', 0)
-            elif command == 'get_pixel_size':
-                ps = self.get_pixel_size(nn)
-                message = ('pixelSize', ps)
-            else:
-                print(f'unknown command: {upd}')
+        self.is_gatan = False
 
-            self.serverSocket.send(pickle.dumps(message))
-            print("Idle")
+        # Command dispatch dictionary
+        self.command_handlers = {
+            'tia_or_gatan': self._handle_tia_or_gatan,
+            'set_gatan': self._handle_set_gatan,
+            'set_tia': self._handle_set_tia,
+            'acquire_4dcamera_scan': self._handle_acquire_4dcamera_scan,
+            'acquire_stem_scan': self._handle_acquire_stem_scan,
+            'set_roi': self._handle_set_roi,
+            'move_beam': self._handle_move_beam,
+            'get_pixel_size': self._handle_get_pixel_size,
+        }
+
+        # Store params for handler methods
+        self.params = None
+
+        while True:
+            try:
+                data = self.serverSocket.recv()
+                command, self.params = pickle.loads(data)
+
+                self.logger.info('Received command: {}'.format(command))
+                self.logger.debug('Command params: {}'.format(self.params))
+
+                # Use command dispatch dictionary
+                handler = self.command_handlers.get(command)
+                if handler:
+                    try:
+                        reply_message, reply_data = handler()
+                        error = None
+                        self.logger.info('Command {} completed successfully'.format(command))
+                    except Exception as e:
+                        # Log the full error with traceback
+                        self.logger.error('Error executing command {}: {}'.format(command, str(e)))
+                        self.logger.error(traceback.format_exc())
+                        # Return error to client
+                        reply_message = 'error executing {}'.format(command)
+                        reply_data = None
+                        error = str(e)
+                else:
+                    self.logger.warning('Unknown command received: {}'.format(command))
+                    reply_message = 'unknown call'
+                    reply_data = None
+                    error = 'Unknown command: {}'.format(command)
+
+                reply_d = {'reply_message': reply_message,
+                           'reply_data': reply_data,
+                           'error': error}
+
+                self.serverSocket.send(pickle.dumps(reply_d))
+                self.logger.debug("Idle")
+
+            except KeyboardInterrupt:
+                self.logger.info('Server shutting down due to keyboard interrupt')
+                break
+            except Exception as e:
+                # Catch any other unexpected errors to prevent server crash
+                self.logger.critical('Unexpected error in main loop: {}'.format(str(e)))
+                self.logger.critical(traceback.format_exc())
+                # Try to send error response to client
+                try:
+                    reply_d = {'reply_message': 'server error',
+                               'reply_data': None,
+                               'error': str(e)}
+                    self.serverSocket.send(pickle.dumps(reply_d))
+                except:
+                    self.logger.critical('Failed to send error response to client')
+                    pass
+
+    # Command handler methods
+    def _handle_tia_or_gatan(self):
+        """Handle query for current mode (TIA or Gatan)"""
+        return 'is_gatan', self.is_gatan
+
+    def _handle_set_gatan(self):
+        """Handle switch to Gatan mode"""
+        self.is_gatan = self.set_is_gatan(True)
+        return 'is_gatan', self.is_gatan
+
+    def _handle_set_tia(self):
+        """Handle switch to TIA mode"""
+        self.is_gatan = self.set_is_gatan(False)
+        return 'is_gatan', self.is_gatan
+
+    def _handle_acquire_4dcamera_scan(self):
+        """Handle 4D Camera scan acquisition"""
+        prev_is_gatan = self.is_gatan
+        if not self.is_gatan:
+            self.is_gatan = self.set_is_gatan(True)
+        ret = self.acquire_4dcamera_scan(self.params)
+        if self.is_gatan != prev_is_gatan:
+            self.is_gatan = self.set_is_gatan(prev_is_gatan)
+        return 'gatan_data', ret
+
+    def _handle_acquire_stem_scan(self):
+        """Handle HAADF-STEM scan acquisition"""
+        prev_is_gatan = self.is_gatan
+        if not self.is_gatan:
+            self.is_gatan = self.set_is_gatan(True)
+        ret = self.acquire_stem_scan(self.params)
+        if self.is_gatan != prev_is_gatan:
+            self.is_gatan = self.set_is_gatan(prev_is_gatan)
+        return 'gatan_data', ret
+
+    def _handle_set_roi(self):
+        """Handle set region of interest"""
+        roi = self.params
+        return 'set_roi', roi
+
+    def _handle_move_beam(self):
+        """Handle beam movement"""
+        self.move_beam(self.params[0], self.params[1])
+        return 'beam moved', 0
+
+    def _handle_get_pixel_size(self):
+        """Handle get pixel size from file"""
+        ps = self.get_pixel_size(self.params)
+        return 'pixelSize', ps
     
-    def get_pixel_size(nn):
-        """Reads the file on disk to get the pixel size"""
+    def get_pixel_size(self, nn):
+        """Reads the file on disk to get the pixel size
+
+        Parameters
+        ----------
+        nn : int or str
+            The scan number or identifier for the file
+
+        Returns
+        -------
+        : float
+            The pixel size (calX) from the dm file
+        """
         return nio.dm.dmReader(f'X:/scan{nn}')['calX']
     
     def move_beam(self, dX, dY):
@@ -118,12 +230,12 @@ class GatanServer():
             The distance to move the beam in the slow scan direction in pixels.
         """
         mbs = dm_scripts.move_beam_script(dX, dY)
-        print('writing move beam script')
+        self.logger.info('Writing move beam script')
         with open(self.MBSCRIPT, 'w') as f:
             f.write(mbs)
         if not self.SIM:
             # call script
-            print('calling move beam script')
+            self.logger.info('Calling move beam script')
             with open('NUL', 'w') as _:
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.MBSCRIPT}\"')
         
@@ -153,24 +265,24 @@ class GatanServer():
                   'units': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Units', ''),
                   'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
                   }
-        print("HAADF data shape = {}".format(data.shape))
+        self.logger.info("HAADF data shape = {}".format(data.shape))
         return data, metadata
 
     def call_stem_script(self, params):
         """ Acquires a STEM datset"""
         try:
             dms = dm_scripts.acquire_stem_script(dwell_time=params['dwell_time'],
-                                                pwidth=params['pwidth'], pheight=params['pheight'], 
+                                                pwidth=params['pwidth'], pheight=params['pheight'],
                                                 rotation=params['rotation'], signal_index=params['signal_index'])
-            print('writing DM script')
+            self.logger.info('Writing DM script for HAADF scan')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
 
             # call script
-            print('calling DM script')
+            self.logger.info('Calling DM script for HAADF scan')
             with open('NUL', 'w') as _:
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
-            print('haadf scan finished')
+            self.logger.info('HAADF scan finished')
         except:
             raise
     
@@ -216,17 +328,17 @@ class GatanServer():
             A tuple containing the STEM data as a numpy array and metadata as a tuple.
         """
         try:
-            dms = dm_scripts.acquire_4Dcamera_script(pwidth=params['pwidth'], pheight=params['pheight'], 
+            dms = dm_scripts.acquire_4Dcamera_script(pwidth=params['pwidth'], pheight=params['pheight'],
                                                      rotation=params['rotation'], nread=params['nread'])
-            print('writing DM script')
+            self.logger.info('Writing DM script for 4D Camera scan')
             with open(self.DMSCRIPT, 'w') as f:
                 f.write(dms)
 
             # call script
-            print('calling DM script')
+            self.logger.info('Calling DM script for 4D Camera scan')
             with open('NUL', 'w') as _:
                 call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
-            print('done')
+            self.logger.info('4D Camera scan finished')
         except:
             raise
 
@@ -245,12 +357,21 @@ class GatanServer():
             return push_gatan
     
     def send_command(self, soc, command):
-        """Send a command to the button pusher and print the response"""
-        print(f"\n>>> Sending: {command}")
+        """Send a command to the button pusher and log the response"""
+        self.logger.debug("Sending to button pusher: {}".format(command))
         soc.send_string(json.dumps(command))
         response = json.loads(soc.recv_string())
-        print(f"<<< Response: {response}")
+        self.logger.debug("Button pusher response: {}".format(response))
         return response
     
 if __name__ == '__main__':
-    ms = GatanServer()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', action='store', type=int, default=13579, help='server port')
+    parser.add_argument('--sim', action='store_true', default=False, help='simulation mode')
+
+    args = parser.parse_args()
+
+    port = args.port
+    sim = args.sim
+
+    server = GatanServer(sim=sim, port=port)

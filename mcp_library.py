@@ -1087,9 +1087,13 @@ def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
     response = gatan_client.send_traffic(('acquire_stem_scan', params))
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
-    
+
+    # Check for errors in response
+    if response['error'] is not None:
+        raise Exception('Gatan server error: {}'.format(response['error']))
+
     # extract image data and metadata from the response
-    (image, metadata) = response[1]
+    (image, metadata) = response['reply_data']
     calx = metadata['calX']
     caly = metadata['calY']
     cal_unit_name = metadata['units']
