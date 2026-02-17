@@ -1107,7 +1107,56 @@ def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_
     write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
     
     return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
+
+@mcp.tool()
+def acquire_oneview_image(exposure_time:float=0.1, x_bin:int=1, y_bin:int=1, processing:int=1, camera_id:Optional[int]=None):
+    '''
+    Acquire a Oneview image DigitalMicrograph (DM). The TEAM 0.5 only has this 
+    one detector for TEM imaging.
     
+    
+    Parameters
+    ----------
+    exposure_time : float, optional
+      Exposure time in seconds. The default is 0.1 seconds.
+    x_bin : int, optional
+      Binning factor in the x direction. The default is 1.
+    y_bin : int, optional
+      Binning factor in the y direction. The default is 1.
+    processing : int, optional
+      Processing mode/level. The default is 1.
+    camera_id : int or None, optional
+      Camera identifier. If None, uses the default camera. The default is None.
+     
+    Returns
+    -------
+    A tuple of the image intensity minimum, maximum, and standard deviation
+
+    '''
+    params = {'exposure_time':exposure_time, 'x_bin':x_bin, 'y_bin':y_bin,
+              'processing':processing, 'camera_id':camera_id}
+    response = gatan_client.send_traffic(('acquire_oneview_image', params))
+
+    # Check for errors in response
+    if response['error'] is not None:
+        raise Exception('Gatan server error: {}'.format(response['error']))
+
+    # extract image data and metadata from the response
+    (image, metadata) = response['reply_data']
+    # calx = metadata['calX']
+    # caly = metadata['calY']
+    # cal_unit_name = metadata['units']
+    image_min = image.min()
+    image_max = image.max()
+    image_std = image.std()
+
+    new_id = mfid.mfid()
+    dir_path = Path('D:/user_data/Claude')
+    file_path = dir_path / Path(f'{new_id[0]}.emd')
+    write_emd_data(str(file_path), image, 1, 1, user_name='Claude', sample_name='')
+    
+    return (str(file_path), 1, 1, "pixel", image_min, image_max, image_std)
+
 @mcp.tool()
 def push_gatan_button():
     '''

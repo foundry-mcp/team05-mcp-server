@@ -62,11 +62,13 @@ class GatanServer():
             self.DMSCRIPT = '4Dcamera_automation_acquireScan_temp.s'
             self.dm4_filename = 'latest_4Dscan.dm4'
             self.haadf_filename = 'latest_haadf.dm4'
+            self.oneview_filename = 'latest_oneview.dm4'
             self.MBSCRIPT = 'move_beam.s'
         else:
             self.DMSCRIPT = self.dir_path / Path('4Dcamera_automation_acquireScan_temp.s')
             self.dm4_filename = self.dir_path / Path('latest_4Dscan.dm4')
             self.haadf_filename = self.dir_path / 'latest_haadf.dm4'
+            self.oneview_filename = self.dir_path / 'latest_oneview.dm4'
             self.MBSCRIPT = self.dir_path / Path('move_beam.s')
 
         # Create button pusher client
@@ -94,6 +96,7 @@ class GatanServer():
             'set_roi': self._handle_set_roi,
             'move_beam': self._handle_move_beam,
             'get_pixel_size': self._handle_get_pixel_size,
+            'acquire_oneview_image': self._handle_acquire_oneview_image,
         }
 
         # Store params for handler methods
@@ -186,6 +189,11 @@ class GatanServer():
         if self.is_gatan != prev_is_gatan:
             self.is_gatan = self.set_is_gatan(prev_is_gatan)
         return 'gatan_data', ret
+
+    def _handle_acquire_oneview_image(self):
+        """Handle Oneview image acquisition"""
+        ret = self.acquire_oneview_image(self.params)
+        return 'oneview_data', ret
 
     def _handle_set_roi(self):
         """Handle set region of interest"""
@@ -282,7 +290,54 @@ class GatanServer():
             self.logger.info('HAADF scan finished')
         except:
             raise
-    
+
+    def acquire_oneview_image(self, params):
+        """Acquires a Oneview image
+        
+        Parameters
+        ----------
+        params : dict
+            The parameter dictionary for acquiring a Oneview image.
+            It requires exposure_time, x_bin, y_bin, processing, and camera id number.
+
+        Returns
+        -------
+        : tuple
+            A tuple containing the data as a numpy array and metadata as a dict.
+        """
+        self.call_oneview_script(params)
+        
+        dm4_file = nio.dm.dmReader(self.oneview_filename)
+        data = dm4_file['data']
+        with nio.dm.fileDM(self.oneview_filename) as f1:
+            allTags = f1.allTags
+        metadata = {'alltags': allTags,
+                  'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
+                  'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
+                  'units': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Units', '')
+                  }
+        self.logger.info("Oneview data shape = {}".format(data.shape))
+        return data, metadata
+
+    def call_oneview_script(self, params):
+        """ Acquires a Oneview datset"""
+        try:
+            dms = dm_scripts.acquire_oneview_script(exposure_time=params['exposure_time'],
+                                                    x_bin=params['x_bin'], y_bin=params['y_bin'],
+                                                    processing=params['processing'],
+                                                    camera_id=params['camera_id'])
+            self.logger.info('Writing DM script for Oneview image')
+            with open(self.DMSCRIPT, 'w') as f:
+                f.write(dms)
+
+            # call script
+            self.logger.info('Calling DM script for Oneview acquisition')
+            with open('NUL', 'w') as _:
+                call(f'\"C:\\Program Files\\Gatan\\DigitalMicrograph.exe\" /ef \"{self.DMSCRIPT}\"')
+            self.logger.info('Oneview acquisition finished')
+        except:
+            raise
+
     def acquire_4dcamera_scan(self, params):
         """Acquires a 4D-STEM dataset.
 
@@ -311,7 +366,7 @@ class GatanServer():
         return data, metadata
     
     def call_4DCam_script(self, params):
-        """ Acquires a 4D Camera datset
+        """ Acquires a 4D Camera dataset
 
         Parameters
         ----------
@@ -338,6 +393,8 @@ class GatanServer():
             self.logger.info('4D Camera scan finished')
         except:
             raise
+
+
 
     def set_is_gatan(self, push_gatan):
         """
