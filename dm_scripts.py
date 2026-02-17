@@ -104,6 +104,7 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         result(reply)
 
         EMSetBeamBlanked(1)
+        EMSetScreenPosition(2)
         
         number image_id = DSGetAcquiredImageID(signalIndex)
         image image0 := GetImageFromID(image_id)
@@ -285,10 +286,18 @@ def acquire_oneview_script(exposure_time=0.1, x_bin=1, y_bin=1, processing=3, ca
                     x_bin = {x_bin}
                     y_bin = {y_bin}
                     processing = {processing}
+                    
+                    EMSetBeamBlanked(0)
+                    EMSetScreenPosition(2)
+                    sleep(0.1)
+                    
                     img = CameraCreateImageForAcquire( exposure, x_bin, y_bin, processing )
                     CameraAcquireInPlace(camID, img, 0.1)
+                    
+                    EMSetBeamBlanked(1)
+                    EMSetScreenPosition(0)
+                    
                     // For server to read and return
-                    result("saving scan...")
                     SaveAsGatan(img, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_oneview.dm4")
                 
     """

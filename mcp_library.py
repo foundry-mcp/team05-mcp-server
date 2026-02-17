@@ -864,7 +864,27 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
 def get_screenshot():
     '''
     Take a screenshot of the microscope GUI. The original PNG is saved on the 
-    server side and a smaller JPG version is returned.
+    server side. 
+    '''
+    d = {'type': 'get_screenshot'}
+    Response = microscope_client.send_traffic(d)
+    
+    image = Response['reply_data']
+    image.save(r'd:\user_data\claude_image.png')
+    return
+    # return a smaller image to the LLM
+    # original_width, original_height = image.size
+    # new_size = (original_width//2, original_height//2)
+    # resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
+    # resized_image.save(r'd:\user_data\claude_image2.jpg')
+    # return mcpImage(r'd:\user_data\claude_image2.jpg')
+
+def get_screenshot_old():
+    '''
+    Take a screenshot of the microscope GUI. The original PNG is saved on the 
+    server side and a smaller version is returned. 
+    
+    THIS IS THE OLDER VERSION IN CASE WE WANT TO REVIST THIS.
     
     Returns
     -------
@@ -877,11 +897,11 @@ def get_screenshot():
     
     image = Response['reply_data']
     image.save(r'd:\user_data\claude_image.png')
+    
     original_width, original_height = image.size
     new_size = (original_width//2, original_height//2)
     resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
     resized_image.save(r'd:\user_data\claude_image2.jpg')
-    
     return mcpImage(r'd:\user_data\claude_image2.jpg')
 
 @mcp.tool()
