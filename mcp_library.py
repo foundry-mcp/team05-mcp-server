@@ -410,11 +410,12 @@ def get_mag():
     '''
     d = {'type': 'get_mag'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def get_convergence_angle():
@@ -429,12 +430,12 @@ def get_convergence_angle():
     '''
     d = {'type': 'get_convergence_angle'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        print(reply_data)
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def get_stage_pos():
@@ -452,11 +453,12 @@ def get_stage_pos():
     '''
     d = {'type': 'get_stage_pos'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def get_camera_length():
@@ -473,11 +475,12 @@ def get_camera_length():
     '''
     d = {'type': 'get_camera_length'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
    
 @mcp.tool()
 def get_camera_length_index():
@@ -494,11 +497,12 @@ def get_camera_length_index():
     '''
     d = {'type': 'get_camera_length_index'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def set_mag(mag:int):
