@@ -209,8 +209,21 @@ def team05_greet_me(username):
 
 # Microscope (BEACON) server commands
 @mcp.tool()
-def acquire_ceos_tableau():
-    """ Acquire a tableau. Hard coded to fast with 18 mrad."""
+def acquire_ceos_tableau(angle=18, tabelau_type='fast'):
+    """ Acquire a tableau uisng the CEOS DCOR aberration corrector software.
+    Parameters
+    ----------
+    angle : float
+        The angle is in radians to use for the tableau. Default is 18 mradians.       
+    tableau_type : str
+        The type of tableau to acquire. Options are 'fast', 'standard', 'full'. 
+    
+    Returns
+    -------
+    : dict
+        A dict containing the aberration values from the tableau fit.
+    
+    """
     d = {'type': 'tableau'}
     Response = microscope_client.send_traffic(d)
     if Response['reply_data'] is None:

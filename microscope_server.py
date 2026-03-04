@@ -1359,24 +1359,33 @@ class MicroscopeServer():
         
         return c1a1_dict
         
-    def tableau_measurement(self):
+    def tableau_measurement(self, angle=18, tableau_type='fast'):
         '''
-        Takes a tabelau with the given maximum tilt angle in milliradians and type.
+        Acquires a tabelau with the given maximum tilt angle in milliradians and type.
         The posisble types are fast, standard, and enhanced.
         
-        This currently only takes a fast tabelau with 18 mrad
-        
+        Parameters
+        ----------
+        angle : float
+        The maximum tilt angle in milliradians.
+        tableau_type : str
+        The type of tableau to acquire. Possible values are 'fast', 'standard', and 'enhanced'.
+        The fast tableau is the quickest to acquire but has the least accurate aberration 
+        measurements. The enhanced tableau is the slowest to acquire but has the most 
+        accurate aberration measurements. The standard tableau is a compromise between 
+        speed and accuracy.
+
         Returns
         -------
         : dict
-        The aberation values.
+            The aberation values.
         '''
         
         self.microscope.unblank()
-        c1a1 = self.corrector.acquireTableau()
+        aberrations = self.corrector.acquireTableau(angle=angle, tableau_type=tableau_type)
         self.microscope.blank()
         
-        tableau_dict = json.loads(c1a1[0].decode('utf-8'))['result']['aberrations']
+        tableau_dict = json.loads(aberrations[0].decode('utf-8'))['result']['aberrations']
         
         print(tableau_dict)
         
