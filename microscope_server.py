@@ -8,6 +8,10 @@ COM server to get and set various microscope settings.
 @author: Alex Pattison, Peter Ercius, Morgan Wall
 """
 
+from typing import Optional
+
+from typing import Optional
+
 import zmq
 import numpy as np
 import pickle
@@ -31,7 +35,7 @@ class CorrectorCommands():
     '''
     Adapted from CorrectorServer.py provided by CEOS, GmbH.
     '''
-    def __init__(self, host='localhost', port=7072, verbose=False):
+    def __init__(self, host: str='localhost', port: int=7072, verbose: bool=False):
         print('Attempting to connecting to CEOS RPC gateway at '+str(rpchost)+':'+str(rpcport))
         self.host = host
         self.port = port
@@ -675,17 +679,19 @@ class MicroscopeControl():
         self.Proj.DiffractionShift = _
         
 class MicroscopeServer():
-    def __init__(self, port, rpchost=None, rpcport=None, SIM=False, TEST=False, TIA=True, CEOS=True):
+    def __init__(self, port: int, 
+                 rpchost: Optional[str] = None, rpcport: Optional[int] = None,
+                 SIM=False, TEST=False, TIA=True, CEOS=True):
         """  A server that accepts strings. Each string is treated
         as a command to set or get microscope settings or enact
         some set of commands such as focusing.
         
         Parameters
         ----------
-        port : 
+        port : int
         The port to open for the server. The server will bind
         that port on all available interfaces.
-        rpchost : string, optional
+        rpchost : str, optional
         The host name of the CEOS RPC gateway.
         rpcport : int, optional
         The port used by the CEOS rpc gateway.
@@ -699,7 +705,6 @@ class MicroscopeServer():
         CEOS : bool
         Indicates whether to connect to the CEOS RPC gateway or not. The
         host and port are also optional keywords.
-        
         """
         # Setup logging
         self.logger = logging.getLogger('MicroscopeServer')
@@ -1367,13 +1372,9 @@ class MicroscopeServer():
         Parameters
         ----------
         angle : float
-        The maximum tilt angle in milliradians.
+            The maximum tilt angle in milliradians.
         tableau_type : str
-        The type of tableau to acquire. Possible values are 'fast', 'standard', and 'enhanced'.
-        The fast tableau is the quickest to acquire but has the least accurate aberration 
-        measurements. The enhanced tableau is the slowest to acquire but has the most 
-        accurate aberration measurements. The standard tableau is a compromise between 
-        speed and accuracy.
+            The type of tableau to acquire. Possible values are 'fast', 'standard', and 'enhanced'.
 
         Returns
         -------
