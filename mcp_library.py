@@ -791,33 +791,6 @@ def focus_stem_image(df_range:float=500e-9, num_seed_values:int=5,
 
     beacon_client.ab_only(ab_values)
     print('Focusing finished.')
-
-#@mcp.tool()
-def focusing(df_range:float=500e-9):
-    '''
-    Performs autofocusing using BEACON. This is a Bayesian optimization 
-    routine which searches with the specified range for the best
-    focus. The best focus is set on the microscope automatically.
-    The df_range is the focal range to serch in meters.
-    
-    DEPRECATED
-    
-    Parameters
-    ----------
-    df_range : float
-        Maximum values plus and minus from the current defocus to 
-        search. The default is 500e-9 meters.
-
-    Returns
-    -------
-    : str
-        A string that the focusing finished.
-
-    '''
-    print('call _focusing with df_range = {}'.format(df_range))
-    _focusing(df_range)
-    print('end focusing')
-    return 'Focusing finished.'
     
 
 def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries:int=4,
