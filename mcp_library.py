@@ -791,10 +791,9 @@ def focus_stem_image(df_range:float=500e-9, num_seed_values:int=5,
 
     beacon_client.ab_only(ab_values)
     print('Focusing finished.')
-    
 
 def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries:int=4,
-                  image_stage_cal_factor:float=1.0, dwell_search:float=2e-6, size_search:int=256):
+                  image_stage_cal_factor:float=1.0, dwell_search:float=2e-6, image_shape:int=256):
     '''
     This acquires an image at the current stage position. It then calculates the cross-correlation
     between the reference image and the current image. The microscope moves the stage to center the
@@ -813,7 +812,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
         Ratio of stage movement calibration to image resolution. The default is 1.0.
     dwell_search : float, optional
         Dwell time in seconds.
-    size_search : int, optional
+    image_shape : int, optional
         Image size in pixels. The image will be square. The default is 256.
 
     Raises
@@ -829,7 +828,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
     cenetered = False
     for ii in range(ntries):
         
-        curImage, pixelSize = acquire_image(dwell_search, size_search)
+        curImage, pixelSize = acquire_image(dwell_search, (image_shape, image_shape))
         
         offset = registration(reference_image, curImage, pixelSize) # Perform registration
         print(f'offset = {offset}') # for debugging
@@ -858,9 +857,9 @@ def get_screenshot():
     '''
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
-    
-    image = Response['reply_data']
-    image.save(r'd:\user_data\claude_image.png')
+    if Response:
+        image = Response['reply_data']
+        image.save(r'd:\user_data\claude_image.png')
     return
     # return a smaller image to the LLM
     # original_width, original_height = image.size
@@ -869,31 +868,6 @@ def get_screenshot():
     # resized_image.save(r'd:\user_data\claude_image2.jpg')
     # return mcpImage(r'd:\user_data\claude_image2.jpg')
 
-def get_screenshot_old():
-    '''
-    Take a screenshot of the microscope GUI. The original PNG is saved on the 
-    server side and a smaller version is returned. 
-    
-    THIS IS THE OLDER VERSION IN CASE WE WANT TO REVIST THIS.
-    
-    Returns
-    -------
-    : fastmcp.utilities.types.Image
-        The image as fastmcp Image from the utilities types module. 
-        The format is a JPG.
-    '''
-    d = {'type': 'get_screenshot'}
-    Response = microscope_client.send_traffic(d)
-    
-    image = Response['reply_data']
-    image.save(r'd:\user_data\claude_image.png')
-    
-    original_width, original_height = image.size
-    new_size = (original_width//2, original_height//2)
-    resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
-    resized_image.save(r'd:\user_data\claude_image2.jpg')
-    return mcpImage(r'd:\user_data\claude_image2.jpg')
-
 @mcp.tool()
 def blank_beam():
     '''
@@ -901,12 +875,14 @@ def blank_beam():
     
     Returns
     -------
-    str: reply message.
+    : str
+        Teply message.
     
     '''
     d = {'type': 'blank_beam'}
     Response = microscope_client.send_traffic(d)
-    return Response['reply_message']
+    if Response:
+        return Response['reply_message']
 
 @mcp.tool()
 def unblank_beam():
@@ -920,7 +896,8 @@ def unblank_beam():
     '''
     d = {'type': 'unblank_beam'}
     Response = microscope_client.send_traffic(d)
-    return Response['reply_message']
+    if Response:
+        return Response['reply_message']
 
 @mcp.tool()
 def get_voltage():
@@ -936,11 +913,12 @@ def get_voltage():
     '''
     d = {'type': 'get_voltage'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def get_stem_rotation_angle():
@@ -955,11 +933,12 @@ def get_stem_rotation_angle():
     '''
     d = {'type': 'get_stem_rotation'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def set_stem_rotation_angle(rotation_angle:float=0.0):
@@ -974,8 +953,9 @@ def set_stem_rotation_angle(rotation_angle:float=0.0):
     '''
     d = {'type': 'set_stem_rotation', 'stem_rotation':rotation_angle}
     Response = microscope_client.send_traffic(d)
-    reply_message = Response['reply_message']
-    return reply_message
+    if Response:
+        reply_message = Response['reply_message']
+        return reply_message
 
 @mcp.tool()
 def get_defocus():
@@ -990,11 +970,14 @@ def get_defocus():
     '''
     d = {'type': 'get_defocus'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
+    if Response:
+        if Response['reply_data'] is None:
+                raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
     else:
-        reply_data = Response['reply_data']
-        return reply_data
+        raise Exception('Command failed.')
 
 @mcp.tool()
 def set_defocus(target_df:float=0e-9):
@@ -1009,8 +992,9 @@ def set_defocus(target_df:float=0e-9):
     '''
     d = {'type': 'set_defocus', 'target_df': target_df}
     Response = microscope_client.send_traffic(d)
-    df = Response['reply_message']
-    return df
+    if Response:
+        df = Response['reply_message']
+        return df
 
 ###
 # Gatan server commands
@@ -1099,24 +1083,25 @@ def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
 
     # Check for errors in response
-    if response['error'] is not None:
-        raise Exception('Gatan server error: {}'.format(response['error']))
+    if response:
+        if response['error'] is not None:
+            raise Exception('Gatan server error: {}'.format(response['error']))
 
-    # extract image data and metadata from the response
-    (image, metadata) = response['reply_data']
-    calx = metadata['calX']
-    caly = metadata['calY']
-    cal_unit_name = metadata['units']
-    image_min = image.min()
-    image_max = image.max()
-    image_std = image.std()
+        # extract image data and metadata from the response
+        (image, metadata) = response['reply_data']
+        calx = metadata['calX']
+        caly = metadata['calY']
+        cal_unit_name = metadata['units']
+        image_min = image.min()
+        image_max = image.max()
+        image_std = image.std()
 
-    new_id = mfid.mfid()
-    dir_path = Path('D:/user_data/Claude')
-    file_path = dir_path / Path(f'{new_id[0]}.emd')
-    write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
-    
-    return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
+        new_id = mfid.mfid()
+        dir_path = Path('D:/user_data/Claude')
+        file_path = dir_path / Path(f'{new_id[0]}.emd')
+        write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
+        
+        return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
 
 @mcp.tool()
 def acquire_oneview_image(exposure_time:float=0.1, x_bin:int=1, y_bin:int=1, processing:int=1, camera_id:Optional[int]=None):
@@ -1148,24 +1133,25 @@ def acquire_oneview_image(exposure_time:float=0.1, x_bin:int=1, y_bin:int=1, pro
     response = gatan_client.send_traffic(('acquire_oneview_image', params))
 
     # Check for errors in response
-    if response['error'] is not None:
-        raise Exception('Gatan server error: {}'.format(response['error']))
+    if response:
+        if response['error'] is not None:
+            raise Exception('Gatan server error: {}'.format(response['error']))
 
-    # extract image data and metadata from the response
-    (image, metadata) = response['reply_data']
-    # calx = metadata['calX']
-    # caly = metadata['calY']
-    # cal_unit_name = metadata['units']
-    image_min = image.min()
-    image_max = image.max()
-    image_std = image.std()
+        # extract image data and metadata from the response
+        (image, metadata) = response['reply_data']
+        # calx = metadata['calX']
+        # caly = metadata['calY']
+        # cal_unit_name = metadata['units']
+        image_min = image.min()
+        image_max = image.max()
+        image_std = image.std()
 
-    new_id = mfid.mfid()
-    dir_path = Path('D:/user_data/Claude')
-    file_path = dir_path / Path(f'{new_id[0]}.emd')
-    write_emd_data(str(file_path), image, 1, 1, user_name='Claude', sample_name='')
-    
-    return (str(file_path), 1, 1, "pixel", image_min, image_max, image_std)
+        new_id = mfid.mfid()
+        dir_path = Path('D:/user_data/Claude')
+        file_path = dir_path / Path(f'{new_id[0]}.emd')
+        write_emd_data(str(file_path), image, 1, 1, user_name='Claude', sample_name='')
+        
+        return (str(file_path), 1, 1, "pixel", image_min, image_max, image_std)
 
 @mcp.tool()
 def push_gatan_button():
@@ -1266,7 +1252,8 @@ if __name__ == "__main__":
     # Check the connection
     d = {'type': 'ping'}
     Response = microscope_client.send_traffic(d)
-    print(Response['reply_message'])
+    if Response:
+        print(Response['reply_message'])
 
     # Gatan PC connection settings
     ghost = '192.168.0.30'
