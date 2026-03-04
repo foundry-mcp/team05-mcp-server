@@ -53,6 +53,12 @@ class CorrectorCommands():
             Name of command
         parameter : str
             A dict or list of parameters
+
+        Returns
+        -------
+        : dict
+            A dictionary containing the response from the server. The contents of the
+            keys of the dictionary are 'rep;y_message' and 'data'.
         '''
         data = self.encodeJSON(name, parameter)
         # Create a socket (SOCK_STREAM means a TCP socket)
@@ -144,17 +150,35 @@ class CorrectorCommands():
     
     def measureC1A1(self):
         """
-        Do a single C1A1(B2A2WD) measurement.
+        Do a single measurement of the C1 (defocus) and A1 (astigmatism) values
+        using the DCOR software.
         
-        :returns: a Deferred containing the aberrations as dict
+        Returns
+        -------
+        : dict
+            A dictionary containing the aberration values for C1 and A1. 
+            The keys of the dict are 'C1' and 'A1' and the values are 2-tuples 
+            with the x and y values of those aberrations in meters.
         """
         return self.communicate('measureC1A1')
     
-    def acquireTableau(self, angle=18, tabType='fast', maxFit='B2'):
+    def acquireTableau(self, angle=18, tableau_type='fast'):
         """
-        Acquire a tableau. angle is in mradians
+        Acquire a tableau uisng the CEOS DCOR aberration corrector software.
+        
+        Parameters
+        ----------
+        angle : float
+            The angle is in radians to use for the tableau. Default is 18 mradians.       
+        tableau_type : str
+            The type of tableau to acquire. Options are 'fast', 'standard', 'full'. 
+        
+        Returns
+        -------
+        : dict
+            A dict containing the aberration values from the tableau fit.
         """
-        params = {'tabType': tabType,
+        params = {'tabType': tableau_type,
                   'angle': angle}
         d = self.communicate('acquireTableau', params)
         return d
