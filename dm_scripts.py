@@ -104,6 +104,7 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         result(reply)
 
         EMSetBeamBlanked(1)
+        EMSetScreenPosition(2)
         
         number image_id = DSGetAcquiredImageID(signalIndex)
         image image0 := GetImageFromID(image_id)
@@ -235,4 +236,69 @@ def acquire_stem_script(dwell_time=1e-6, pwidth=256, pheight=256, rotation=0, si
                 
                     result("done\\n")
                     """
+    return script_text
+
+def acquire_oneview_script(exposure_time=0.1, x_bin=1, y_bin=1, processing=3, camera_id=None):
+    """ A script to acquire an image using the Oneview TEM detector. This is usually
+    done in TEM mode to acquire real space imaages, but it can also be used to
+    image the Ronchigram or diffraction pattern in STEM mode.
+    
+    The Oneview is a hybird sensor with a phosphor covering a CMOS sensor.
+    It has 4096 by 4096 pixels and the physical pixels are 15 um by 15 um. 
+    The minimum exposure time with binning 1 is 0.04 seconds. Typical binning
+    values are 2 (2048 by 2048), 4 (1024 by 1024), and 8 (512 by 512).
+    
+    
+    Parameters
+    ----------
+    exposure_time : float
+        The exposure time in seconds.
+    x_bin : int
+        The binning to reduce the number of pixels in the final image in the x dimension. 
+    y_bin : int
+        The binning to reduce the number of pixels in the final image in the y dimension.
+    processsing : int
+        Indicates what type of processing is done in hardware after the image is acquired.
+        A value of 3 is usually used indicating dark field subtraction and gain are applied.
+    camera_id : int, optional
+        The ID number of the camera. If set to None then the CameraGetActiveCameraID() function is
+        used to determine the camera number.
+    
+    Returns
+    -------
+    : str
+        A string that contains the script ready to write to disk and be executed.
+    
+    """
+    if camera_id is not None:
+        cam_id = camera_id
+    else:
+        cam_id = "CameraGetActiveCameraID( )"
+    script_text =  f"""
+                    number camID = {cam_id}
+                    number exposure
+                    number x_bin, y_bin
+                    number processing
+                    //number areaT, areaL, areaB, areaR
+
+                    //CameraGetDefaultParameters( camID, exposure, xBin, yBin, processing, areaT, areaL, areaB, areaR )
+                    exposure = {exposure_time}
+                    x_bin = {x_bin}
+                    y_bin = {y_bin}
+                    processing = {processing}
+                    
+                    EMSetBeamBlanked(0)
+                    EMSetScreenPosition(2)
+                    sleep(0.1)
+                    
+                    img = CameraCreateImageForAcquire( exposure, x_bin, y_bin, processing )
+                    CameraAcquireInPlace(camID, img, 0.1)
+                    
+                    EMSetBeamBlanked(1)
+                    EMSetScreenPosition(0)
+                    
+                    // For server to read and return
+                    SaveAsGatan(img, "C:\\\\Users\\\\VALUEDGATANCUSTOMER\\\\Documents\\\\automation\\\\latest_oneview.dm4")
+                
+    """
     return script_text

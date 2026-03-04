@@ -89,5 +89,16 @@ if __name__ == "__main__":
     params = {'pwidth':128, 'pheight':128, 'rotation':0, 'nread':2}
     #gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
     response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
-    print(response)
+
+    # Response format: {'reply_message': str, 'reply_data': data, 'error': str or None}
+    print("Response:", response)
+    if response and response.get('error') is None:
+        print("Success! Reply message:", response['reply_message'])
+        if response['reply_data'] is not None:
+            data, metadata = response['reply_data']
+            print("Data shape:", data.shape)
+            print("Metadata:", metadata)
+    elif response:
+        print("Error:", response.get('error'))
+
     #gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
