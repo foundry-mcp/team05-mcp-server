@@ -732,8 +732,8 @@ class MicroscopeServer():
 
         self.SIM = SIM
         if not self.SIM:
-            if CEOS:
-                self.corrector = CorrectorCommands(host=rpchost, port=rpcport) 
+            if CEOS and rpchost and rpcport:
+                self.corrector = CorrectorCommands(host=rpchost, port=rpcport)
             if TIA:
                 self.microscope = MicroscopeControl()
         
