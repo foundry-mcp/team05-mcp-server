@@ -660,8 +660,8 @@ class MicroscopeControl():
         
         Returns
         -------
-        : float
-        The STEM diffraction shift value in radians.
+        : tuple of floats
+            The STEM diffraction X and Y shift values in radians.
         """
         return (self.Proj.DiffractionShift.X, self.Proj.DiffractionShift.Y)
     
@@ -670,8 +670,8 @@ class MicroscopeControl():
         
         Parameters
         ----------
-        diff_shift : tuple, 2 floats
-            The X and Y diffraction shift The shift is in radians.
+        diff_shift : tuple of floats
+            The X and Y diffraction shift values in radians.
         """
         _ = self.Proj.DiffractionShift
         _.X = diff_shift[0]
