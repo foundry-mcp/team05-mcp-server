@@ -31,7 +31,7 @@ class CorrectorCommands():
     '''
     Adapted from CorrectorServer.py provided by CEOS, GmbH.
     '''
-    def __init__(self, host='localhost', port=7072, verbose=False):
+    def __init__(self, host: str='localhost', port: int=7072, verbose: bool=False):
         print('Attempting to connecting to CEOS RPC gateway at '+str(rpchost)+':'+str(rpcport))
         self.host = host
         self.port = port
@@ -53,6 +53,12 @@ class CorrectorCommands():
             Name of command
         parameter : str
             A dict or list of parameters
+
+        Returns
+        -------
+        : dict
+            A dictionary containing the response from the server. The contents of the
+            keys of the dictionary are 'rep;y_message' and 'data'.
         '''
         data = self.encodeJSON(name, parameter)
         # Create a socket (SOCK_STREAM means a TCP socket)
@@ -144,18 +150,37 @@ class CorrectorCommands():
     
     def measureC1A1(self):
         """
-        Do a single C1A1(B2A2WD) measurement.
+        Do a single measurement of the C1 (defocus) and A1 (astigmatism) values
+        using the DCOR software.
         
-        :returns: a Deferred containing the aberrations as dict
+        Returns
+        -------
+        : dict
+            A dictionary containing the aberration values for C1 and A1. 
+            The keys of the dict are 'C1' and 'A1' and the values are 2-tuples 
+            with the x and y values of those aberrations in meters.
         """
         return self.communicate('measureC1A1')
     
-    def acquireTableau(self, angle=18, tabType='fast', maxFit='B2'):
+    def acquireTableau(self, angle=18, tableau_type='fast'):
         """
-        Acquire a tableau. angle is in mradians
+        Acquire a tableau uisng the CEOS DCOR aberration corrector software.
+        
+        Parameters
+        ----------
+        angle : float
+            The angle is in radians to use for the tableau. Default is 18 mradians.       
+        tableau_type : str
+            The type of tableau to acquire. Options are 'fast', 'standard', 'full'. 
+        
+        Returns
+        -------
+        : dict
+            A dict containing the aberration values from the tableau fit.
         """
-        params = {'tabType': tabType,
+        params = {'tabType': tableau_type,
                   'angle': angle}
+        print(params)
         d = self.communicate('acquireTableau', params)
         return d
     
@@ -632,8 +657,8 @@ class MicroscopeControl():
         
         Returns
         -------
-        : float
-        The STEM diffraction shift value in radians.
+        : tuple of floats
+            The STEM diffraction X and Y shift values in radians.
         """
         return (self.Proj.DiffractionShift.X, self.Proj.DiffractionShift.Y)
     
@@ -642,8 +667,8 @@ class MicroscopeControl():
         
         Parameters
         ----------
-        diff_shift : tuple, 2 floats
-            The X and Y diffraction shift The shift is in radians.
+        diff_shift : tuple of floats
+            The X and Y diffraction shift values in radians.
         """
         _ = self.Proj.DiffractionShift
         _.X = diff_shift[0]
@@ -651,17 +676,19 @@ class MicroscopeControl():
         self.Proj.DiffractionShift = _
         
 class MicroscopeServer():
-    def __init__(self, port, rpchost=None, rpcport=None, SIM=False, TEST=False, TIA=True, CEOS=True):
+    def __init__(self, port: int, 
+                 rpchost = None, rpcport = None,
+                 SIM=False, TEST=False, TIA=True, CEOS=True):
         """  A server that accepts strings. Each string is treated
         as a command to set or get microscope settings or enact
         some set of commands such as focusing.
         
         Parameters
         ----------
-        port : 
+        port : int
         The port to open for the server. The server will bind
         that port on all available interfaces.
-        rpchost : string, optional
+        rpchost : str, optional
         The host name of the CEOS RPC gateway.
         rpcport : int, optional
         The port used by the CEOS rpc gateway.
@@ -675,7 +702,6 @@ class MicroscopeServer():
         CEOS : bool
         Indicates whether to connect to the CEOS RPC gateway or not. The
         host and port are also optional keywords.
-        
         """
         # Setup logging
         self.logger = logging.getLogger('MicroscopeServer')
@@ -703,8 +729,8 @@ class MicroscopeServer():
 
         self.SIM = SIM
         if not self.SIM:
-            if CEOS:
-                self.corrector = CorrectorCommands(host=rpchost, port=rpcport) 
+            if CEOS and rpchost and rpcport:
+                self.corrector = CorrectorCommands(host=rpchost, port=rpcport)
             if TIA:
                 self.microscope = MicroscopeControl()
         
@@ -1337,22 +1363,30 @@ class MicroscopeServer():
         
     def tableau_measurement(self):
         '''
-        Takes a tabelau with the given maximum tilt angle in milliradians and type.
+        Acquires a tabelau with the given maximum tilt angle in milliradians and type.
         The posisble types are fast, standard, and enhanced.
         
-        This currently only takes a fast tabelau with 18 mrad
-        
+        Parameters
+        ----------
+        angle : float
+            The maximum tilt angle in milliradians.
+        tableau_type : str
+            The type of tableau to acquire. Possible values are 'fast', 'standard', and 'enhanced'.
+
         Returns
         -------
         : dict
-        The aberation values.
+            The aberation values.
         '''
         
+        angle = self.d.get('angle', 18) # default to 18 mrad
+        tableau_type = self.d.get('tabType', 'fast') # default to fast
+        print(angle, tableau_type)
         self.microscope.unblank()
-        c1a1 = self.corrector.acquireTableau()
+        aberrations = self.corrector.acquireTableau(angle=angle, tableau_type=tableau_type)
         self.microscope.blank()
         
-        tableau_dict = json.loads(c1a1[0].decode('utf-8'))['result']['aberrations']
+        tableau_dict = json.loads(aberrations[0].decode('utf-8'))['result']['aberrations']
         
         print(tableau_dict)
         
