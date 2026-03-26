@@ -180,6 +180,7 @@ class CorrectorCommands():
         """
         params = {'tabType': tableau_type,
                   'angle': angle}
+        print(params)
         d = self.communicate('acquireTableau', params)
         return d
     
@@ -676,7 +677,7 @@ class MicroscopeControl():
         
 class MicroscopeServer():
     def __init__(self, port: int, 
-                 rpchost: = None, rpcport: = None,
+                 rpchost = None, rpcport = None,
                  SIM=False, TEST=False, TIA=True, CEOS=True):
         """  A server that accepts strings. Each string is treated
         as a command to set or get microscope settings or enact
@@ -1360,7 +1361,7 @@ class MicroscopeServer():
         
         return c1a1_dict
         
-    def tableau_measurement(self, angle=18, tableau_type='fast'):
+    def tableau_measurement(self):
         '''
         Acquires a tabelau with the given maximum tilt angle in milliradians and type.
         The posisble types are fast, standard, and enhanced.
@@ -1378,6 +1379,9 @@ class MicroscopeServer():
             The aberation values.
         '''
         
+        angle = self.d.get('angle', 18) # default to 18 mrad
+        tableau_type = self.d.get('tabType', 'fast') # default to fast
+        print(angle, tableau_type)
         self.microscope.unblank()
         aberrations = self.corrector.acquireTableau(angle=angle, tableau_type=tableau_type)
         self.microscope.blank()

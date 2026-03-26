@@ -209,7 +209,7 @@ def team05_greet_me(username):
 
 # Microscope (BEACON) server commands
 @mcp.tool()
-def acquire_ceos_tableau(angle=18, tabelau_type='fast'):
+def acquire_ceos_tableau(angle=18, tableau_type='fast'):
     """ Acquire a tableau uisng the CEOS DCOR aberration corrector software.
     Parameters
     ----------
@@ -224,7 +224,7 @@ def acquire_ceos_tableau(angle=18, tabelau_type='fast'):
         A dict containing the aberration values from the tableau fit.
     
     """
-    d = {'type': 'tableau'}
+    d = {'type': 'tableau', 'angle': angle, 'tabType': tableau_type}
     Response = microscope_client.send_traffic(d)
     if Response['reply_data'] is None:
         raise Exception('Command failed.')
