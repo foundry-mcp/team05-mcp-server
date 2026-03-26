@@ -8,10 +8,6 @@ COM server to get and set various microscope settings.
 @author: Alex Pattison, Peter Ercius, Morgan Wall
 """
 
-from typing import Optional
-
-from typing import Optional
-
 import zmq
 import numpy as np
 import pickle
@@ -680,7 +676,7 @@ class MicroscopeControl():
         
 class MicroscopeServer():
     def __init__(self, port: int, 
-                 rpchost: Optional[str] = None, rpcport: Optional[int] = None,
+                 rpchost: = None, rpcport: = None,
                  SIM=False, TEST=False, TIA=True, CEOS=True):
         """  A server that accepts strings. Each string is treated
         as a command to set or get microscope settings or enact
