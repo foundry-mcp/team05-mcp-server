@@ -7,16 +7,16 @@ and TVIPS scan controller.
 from pathlib import Path
 import pickle
 import zmq
-import ncempy.io as nio
-from subprocess import call
-import json
 import logging
 import traceback
 import argparse
+import time
 
-import dm_scripts
 
-class GatanServer():
+import winreg
+from dcu_client import DEigerClient
+
+class DectrisServer():
     def __init__(self, port=13580):
         """A server that accepts commands to control Dectris and
         TVIPS scan controller.
@@ -27,6 +27,11 @@ class GatanServer():
             The port to open for the server. The server will bind that port
             on all available interfaces.
         """
+        # Camera connection parameters
+        self.dcu_ip = "10.42.41.10"
+        self.dcu_port = 80
+        self.n_scans = 5
+
         # Setup logging
         self.logger = logging.getLogger('DectrisServer')
         self.logger.setLevel(logging.DEBUG)
@@ -148,23 +153,72 @@ class GatanServer():
         : tuple
             A tuple containing the STEM data as a numpy array and metadata as a tuple.
         """
+        self.logger.info(f"\n=== Scan {scan_index + 1} / {n_scans} ===")
+
+        # Arm detector
+        seq_id = client.sendDetectorCommand('arm')['sequence id']
+        self.logger.info(f"  Armed. Sequence id: {seq_id}")
+
+        # Start scan
+        winreg.SetValueEx(reg_key, "Start", 0, winreg.REG_DWORD, 1)
+        self.logger.info("  Scan started.")
+
+        winreg.CloseKey(reg_key)
+    
+    def setup_detector(self, params):
+        """Setup the Dectris detector with the provided parameters.
+
+        Parameters
+        ----------
+        params : dict
+            The parameter dictionary for setting up the Dectris detector.
+            It requires keys: 
+
+        Returns
+        -------
+        : str
+            A message indicating the result of the setup operation.
+        """
+        client = DEigerClient(self.dcu_ip, self.dcu_port)
+
+        # Configure stream and filewriter (once)
         
+        self.logger.info("Configuring stream and filewriter ...")
+        client.setStreamConfig('mode', 'enabled')
+        client.setStreamConfig('format', 'cbor')
+        client.setStreamConfig('header_detail', 'all')
+        client.setMonitorConfig('mode', 'disabled')
+        client.setFileWriterConfig('mode', 'enabled')
+        client.setFileWriterConfig('name_pattern', 'scan_$id')
+        client.setFileWriterConfig('nimages_per_file', 100000000)
+
+        self.logger.info(f"  trigger_mode = {client.detectorConfig('trigger_mode')['value']}")
+        self.logger.info(f"  nimages      = {client.detectorConfig('nimages')['value']}")
+        self.logger.info(f"  ntrigger     = {client.detectorConfig('ntrigger')['value']}")
+        self.logger.info(f"  count_time   = {client.detectorConfig('count_time')['value']} s")
+        self.logger.info(f"  frame_time   = {client.detectorConfig('frame_time')['value']} s")
+
+        # Open registry key once, keep it open for all scans
+        reg_key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"SOFTWARE\TVIPS_GMBH\ScanGen",
+            0,
+            winreg.KEY_ALL_ACCESS,
+        )
         
-        metadata = {'alltags': allTags,
-                  'calX': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Scale', 1)*1e-6,
-                  'calY': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.2.Scale', 1)*1e-6,
-                  'units': allTags.get('.ImageList.2.ImageData.Calibrations.Dimension.1.Units', ''),
-                  'dwell': allTags.get('.ImageList.2.ImageTags.DigiScan.Sample Time', 0)*1e-6
-                  }
-        self.logger.info("HAADF data shape = {}".format(data.shape))
-        return data, metadata
+        self.logger.info("Setting up Dectris detector with params: {}".format(params))
+        
+        # Simulate some setup time
+        time.sleep(1)
+        
+        return "Dectris detector setup complete with parameters: {}".format(params)
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', action='store', type=int, default=13579, help='server port')
+    parser.add_argument('--port', action='store', type=int, default=13580, help='server port')
 
     args = parser.parse_args()
 
     port = args.port
 
-    server = GatanServer(port=port)
+    server = DectrisServer(port=port)
