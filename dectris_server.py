@@ -30,7 +30,6 @@ class DectrisServer():
         # Camera connection parameters
         self.dcu_ip = "10.42.41.10"
         self.dcu_port = 80
-        self.n_scans = 5
 
         # Setup logging
         self.logger = logging.getLogger('DectrisServer')
@@ -146,24 +145,23 @@ class DectrisServer():
         params : dict
             The parameter dictionary for acquiring a 4D-STEM dataset using
             an Arina camera with the TVIPS scan controller.
-            It requires keys: dwell_time, width, height
+            It requires keys: dwell_time in sec, width (pixels), height (pixels)
 
         Returns
         -------
         : tuple
             A tuple containing the STEM data as a numpy array and metadata as a tuple.
         """
-        self.logger.info(f"\n=== Scan {scan_index + 1} / {n_scans} ===")
-
+        client = DEigerClient(self.dcu_ip, self.dcu_port)
         # Arm detector
         seq_id = client.sendDetectorCommand('arm')['sequence id']
         self.logger.info(f"  Armed. Sequence id: {seq_id}")
 
         # Start scan
-        winreg.SetValueEx(reg_key, "Start", 0, winreg.REG_DWORD, 1)
+        winreg.SetValueEx(self.reg_key, "Start", 0, winreg.REG_DWORD, 1)
         self.logger.info("  Scan started.")
 
-        winreg.CloseKey(reg_key)
+        winreg.CloseKey(self.reg_key)
     
     def setup_detector(self, params):
         """Setup the Dectris detector with the provided parameters.
@@ -180,17 +178,28 @@ class DectrisServer():
             A message indicating the result of the setup operation.
         """
         client = DEigerClient(self.dcu_ip, self.dcu_port)
-
-        # Configure stream and filewriter (once)
         
-        self.logger.info("Configuring stream and filewriter ...")
-        client.setStreamConfig('mode', 'enabled')
-        client.setStreamConfig('format', 'cbor')
-        client.setStreamConfig('header_detail', 'all')
-        client.setMonitorConfig('mode', 'disabled')
-        client.setFileWriterConfig('mode', 'enabled')
-        client.setFileWriterConfig('name_pattern', 'scan_$id')
-        client.setFileWriterConfig('nimages_per_file', 100000000)
+        #streaming
+        if params["file_write_mode"]=="streaming":
+            self.logger.info("Configuring stream and filewriter ...")
+            client.setStreamConfig('mode', 'enabled')
+            client.setStreamConfig('format', 'cbor')
+            client.setStreamConfig('header_detail', 'all')
+            client.setMonitorConfig('mode', 'disabled')
+            client.setFileWriterConfig('mode', 'enabled')
+            client.setFileWriterConfig('name_pattern', 'scan_$id')
+            client.setFileWriterConfig('nimages_per_file', 100000000)
+    
+        # file_writer
+        elif params["file_write_mode"]=="h5":
+            self.logger.info("Configuring filewriter ...")
+            client.setFileWriterConfig(param='mode', value='enabled')
+            client.setFileWriterConfig(param='name_pattern',value='filename')
+            client.setFileWriterConfig('compression_enabled',True)
+            client.setFileWriterConfig('nimages_per_file', 100000000)
+            client.setFileWriterConfig('name_pattern', 'scan_$id')
+        else:
+            print('Error, please enter file mode')
 
         self.logger.info(f"  trigger_mode = {client.detectorConfig('trigger_mode')['value']}")
         self.logger.info(f"  nimages      = {client.detectorConfig('nimages')['value']}")
@@ -199,7 +208,7 @@ class DectrisServer():
         self.logger.info(f"  frame_time   = {client.detectorConfig('frame_time')['value']} s")
 
         # Open registry key once, keep it open for all scans
-        reg_key = winreg.OpenKey(
+        self.reg_key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
             r"SOFTWARE\TVIPS_GMBH\ScanGen",
             0,
