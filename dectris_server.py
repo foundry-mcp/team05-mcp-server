@@ -73,7 +73,7 @@ class DectrisServer():
         while True:
             try:
                 data = self.serverSocket.recv()
-                command, self.params = pickle.loads(data)
+                command, self.params = pickle.loads(data) # the command and the params dictionary for that instruction
 
                 self.logger.info('Received command: {}'.format(command))
                 self.logger.debug('Command params: {}'.format(self.params))
@@ -124,33 +124,22 @@ class DectrisServer():
                     pass
 
     # Command handler methods
-
     def _handle_acquire_scan(self):
         """Handle Arina TVIPS scan acquisition"""
-
-        ret = self.acquire_scan(self.params)
-
-        return 'dectris_data', ret
+        self.acquire_scan()
 
     def _handle_setup_detector(self):
         """Handle Dectris detector setup"""
-        ret = self.setup_detector(self.params)
-        return 'dectris_setup', ret
+        if self.params is not None:
+            file_write_mode = self.params['file_write_mode']
+            ret = self.setup_detector(file_write_mode)
+            return 'dectris_setup', ret
+        else:
+            return 'error', ''
 
-    def acquire_scan(self, params):
+    def acquire_scan(self):
         """Acquires a Arina 4D-STEM dataset using the TVIPS scan controller.
-        
-        Parameters
-        ----------
-        params : dict
-            The parameter dictionary for acquiring a 4D-STEM dataset using
-            an Arina camera with the TVIPS scan controller.
-            It requires keys: dwell_time in sec, width (pixels), height (pixels)
 
-        Returns
-        -------
-        : tuple
-            A tuple containing the STEM data as a numpy array and metadata as a tuple.
         """
         client = DEigerClient(self.dcu_ip, self.dcu_port)
         # Arm detector
@@ -163,14 +152,14 @@ class DectrisServer():
 
         winreg.CloseKey(self.reg_key)
     
-    def setup_detector(self, params):
+    def setup_detector(self, file_write_mode):
         """Setup the Dectris detector with the provided parameters.
 
         Parameters
         ----------
-        params : dict
-            The parameter dictionary for setting up the Dectris detector.
-            It requires keys: 
+        file_write_mode : str
+            The file write mode for setting up the Dectris detector.
+            It requires values: 'streaming' or 'h5'
 
         Returns
         -------
@@ -179,19 +168,17 @@ class DectrisServer():
         """
         client = DEigerClient(self.dcu_ip, self.dcu_port)
         
-        #streaming
-        if params["file_write_mode"]=="streaming":
-            self.logger.info("Configuring stream and filewriter ...")
+        # Stream or write to disk
+        if file_write_mode["file_write_mode"] == "streaming":
+            self.logger.info("Configuring stream...")
             client.setStreamConfig('mode', 'enabled')
             client.setStreamConfig('format', 'cbor')
             client.setStreamConfig('header_detail', 'all')
             client.setMonitorConfig('mode', 'disabled')
-            client.setFileWriterConfig('mode', 'enabled')
+            client.setFileWriterConfig('mode', 'enabled') # this seems unnecessary. Test removing this
             client.setFileWriterConfig('name_pattern', 'scan_$id')
             client.setFileWriterConfig('nimages_per_file', 100000000)
-    
-        # file_writer
-        elif params["file_write_mode"]=="h5":
+        elif file_write_mode["file_write_mode"] == "h5":
             self.logger.info("Configuring filewriter ...")
             client.setFileWriterConfig(param='mode', value='enabled')
             client.setFileWriterConfig(param='name_pattern',value='filename')
@@ -199,7 +186,7 @@ class DectrisServer():
             client.setFileWriterConfig('nimages_per_file', 100000000)
             client.setFileWriterConfig('name_pattern', 'scan_$id')
         else:
-            print('Error, please enter file mode')
+            self.logger.info('Error, please provide file mode')
 
         self.logger.info(f"  trigger_mode = {client.detectorConfig('trigger_mode')['value']}")
         self.logger.info(f"  nimages      = {client.detectorConfig('nimages')['value']}")
@@ -215,10 +202,10 @@ class DectrisServer():
             winreg.KEY_ALL_ACCESS,
         )
         
-        self.logger.info("Setting up Dectris detector with params: {}".format(params))
+        self.logger.info("Setting up Dectris detector for: {}".format(file_write_mode))
         
-        # Simulate some setup time
-        time.sleep(1)
+        # Allow for setup time
+        time.sleep(.1)
         
         return "Dectris detector setup complete with parameters: {}".format(params)
     
