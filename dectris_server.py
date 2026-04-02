@@ -207,7 +207,7 @@ class DectrisServer():
         # Allow for setup time
         time.sleep(.1)
         
-        return "Dectris detector setup complete with parameters: {}".format(params)
+        return "Dectris detector setup complete with parameters: {}".format(file_write_mode)
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
