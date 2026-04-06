@@ -593,19 +593,20 @@ class MicroscopeControl():
         md['microscope name'] = "TEAM 0.5"
         md['high tension'] = self._microscope.Gun.HTValue
         md['spot size index'] = self.Ill.SpotsizeIndex
-        md['stem magnification'] = self.Ill.StemMagnification
         md['defocus'] = self.Proj.Defocus # Ill has ProbeDefocus but that is not useful
         md['convergence angle'] = self.Ill.ConvergenceAngle
         md['camera length'] = self.Proj.CameraLength
         md['camera length index'] = self.Proj.CameraLengthIndex
         md['condenser stigmator'] = (self.Ill.CondenserStigmator.X, self.Ill.CondenserStigmator.Y)
-        md['stem rotation'] = self.Ill.StemRotation
         md['diffraction shift'] = (self.Proj.DiffractionShift.X, self.Proj.DiffractionShift.Y)
-        md['stem field of view'] = (self.Ill.StemFullScanFieldOfView.X, self.Ill.StemFullScanFieldOfView.Y)
-        print('here')
-        print(self.get_stage_pos())
         md['stage position'] = self.get_stage_pos()
-        md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
+        try:
+            md['stem field of view'] = (self.Ill.StemFullScanFieldOfView.X, self.Ill.StemFullScanFieldOfView.Y)
+            md['stem rotation'] = (self.Ill.RotationCenter.X, self.Ill.RotationCenter.Y)
+            md['stem rotation'] = self.Ill.StemRotation
+            md['stem magnification'] = self.Ill.StemMagnification
+        except:
+            pass
         return md
     
     def get_beam_tilt(self):
