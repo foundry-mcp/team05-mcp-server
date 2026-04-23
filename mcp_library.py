@@ -855,13 +855,13 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
 @mcp.tool()
 def get_screenshot():
     '''
-    Take a screenshot of the microscope GUI. The original PNG is saved on the 
-    server side. 
+    Take a screenshot of the microscope GUI. The original PNG is saved on the
+    server side.
     '''
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
     if Response:
-        image = Response['reply_data']
+        image = pilImage.open(io.BytesIO(Response['reply_data']))
         image.save(r'd:\user_data\claude_image.png')
     return
     # return a smaller image to the LLM
