@@ -1163,6 +1163,14 @@ def push_gatan_button():
     '''
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
 
+@mcp.tool()
+def push_tia_button():
+    '''
+    This will push the TIA button on the NCEM button pusher,
+    returning scan control to TIA.
+    '''
+    gatan_client.send_traffic(('set_tia', 0))
+
 class Microscope_Client():
     '''Communicates with the server on the microscope PC.'''
     def __init__(self, host='192.168.0.24', port=7001):
