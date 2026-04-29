@@ -104,7 +104,7 @@ def acquire_4Dcamera_script(pwidth=256, pheight=256, nread=1, rotation=0):
         result(reply)
 
         EMSetBeamBlanked(1)
-        EMSetScreenPosition(2)
+        EMSetScreenPosition(0)
         
         number image_id = DSGetAcquiredImageID(signalIndex)
         image image0 := GetImageFromID(image_id)
