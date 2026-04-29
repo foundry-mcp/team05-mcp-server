@@ -855,13 +855,13 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
 @mcp.tool()
 def get_screenshot():
     '''
-    Take a screenshot of the microscope GUI. The original PNG is saved on the 
-    server side. 
+    Take a screenshot of the microscope GUI. The original PNG is saved on the
+    server side.
     '''
     d = {'type': 'get_screenshot'}
     Response = microscope_client.send_traffic(d)
     if Response:
-        image = Response['reply_data']
+        image = pilImage.open(io.BytesIO(Response['reply_data']))
         image.save(r'd:\user_data\claude_image.png')
     return
     # return a smaller image to the LLM
@@ -1162,6 +1162,14 @@ def push_gatan_button():
     This will push the gatan button on the NCEM button pusher.
     '''
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
+
+@mcp.tool()
+def push_tia_button():
+    '''
+    This will push the TIA button on the NCEM button pusher,
+    returning scan control to TIA.
+    '''
+    gatan_client.send_traffic(('set_tia', 0))
 
 class Microscope_Client():
     '''Communicates with the server on the microscope PC.'''

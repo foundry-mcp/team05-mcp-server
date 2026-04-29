@@ -8,6 +8,7 @@ COM server to get and set various microscope settings.
 @author: Alex Pattison, Peter Ercius, Morgan Wall
 """
 
+import io
 import zmq
 import numpy as np
 import pickle
@@ -205,15 +206,17 @@ class MicroscopeControl():
     
     def get_screenshot(self):
         """ Take a screen shot of the first monitor.
-        
+
         Returns
         -------
-        : PIL.Image
-            A PIl img object.
+        : bytes
+            JPEG-compressed image bytes.
         """
         img = ImageGrab.grab()
         img.save('C:/microscope_server_screenshot.png')
-        return img
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=85)
+        return buf.getvalue()
     
     def open_column_valve(self):
         """Opens the microscope column valves"""
