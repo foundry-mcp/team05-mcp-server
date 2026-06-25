@@ -9,43 +9,38 @@ from numpy.typing import NDArray
 import base64
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
-
 mcp = FastMCP("4Dcamera")
 
+# Load environment variables from .env file
+load_dotenv()
 # Define the server's IP address and port
-host = os.getenv("CAM_HOST") # the address of the server to send the commands
-port = os.getenv("CAM_PORT") # the port to send the commands to
-ip = os.getenv("CAM_IP")
-
-'''
-This is a set of tools for communicating with the 4Dcamera
-
-'''
-
+server_host = os.getenv("SRV_HOST") # the address of the server to send the commands
+server_user = os.getenv("SRV_USR") # the username to log into the server
+server_pwd = os.getenv("SRV_PWD")
+server_port = os.getenv("SRV_PORT") # the port to send the commands to
+# 4D Camera head IP address and credentials
+camera_ip = os.getenv("CAM_IP") # the camera head IP
+camera_usr = os.getenv("CAM_USR")
+camera_pwd = os.getenv("CAM_PWD2")
 
 def ssh_connect_with_password(hostname, username, password, command):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    
+
     try:
         client.connect(hostname, username=username, password=password)
         stdin, stdout, stderr = client.exec_command(command)
         result = stdout.read().decode()
-        print(stdout.read().decode())
-        print(stderr.read().decode())
+        error = stderr.read().decode()
+        print(result)
+        print(error)
         return result
+    except Exception as e:
+        error_msg = f"SSH connection failed: {str(e)}"
+        print(error_msg)
+        return error_msg
     finally:
         client.close()
-
-
-
-@mcp.tool()
-def greet_user(username):
-    ''' this function greets a user by name '''
-    return f'hello {username}'
-
 
 def send_command(content):
     """ This function takes in a string as a command to the 4D Camera. 
@@ -57,7 +52,7 @@ def send_command(content):
     # status_text.delete('1.0', tk.END)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print(f"# ============ {s=}")
-    s.connect((host, int(port)))
+    s.connect((server_host, int(server_port)))
     s.sendall(content.encode())
     s.shutdown(socket.SHUT_WR)
     while True:
@@ -133,22 +128,17 @@ def on_set_temperature(temperature=None):
     temperature input from a text box and sets the camera temperautre. If
     the temperature keyword is set then it uses that temperature. The 
     temperature is in celsius."""
-    if temperature:
-        temp = temperature
-    else:
-        temp = temperature.get() # new temperature in GUI
-    content = f"setsensortemperature {temp}"
+    content = f"setsensortemperature {temperature}"
     send_command(content)
 
 @mcp.tool()
 def on_get_temperature():
     """This reads the temperature from the sensor. Only the Q1 temperature is important. This parses
     the output from the sensor and returns only the needed value in celsius."""
-    for_vfdaq = os.getenv('for_vfdaq') # `set for_vfdaq=` or `export for_vfdaq=`
-    command1 = f"echo \"dsh sensor temp\" | sshpass -e ssh -T -o HostKeyAlgorithms=ssh-rsa root@{ip}"
-    rr = ssh_connect_with_password('vfdaq.lbl.gov', 'daquser', for_vfdaq, command1)
+    command1 = f"echo \"dsh sensor temp\" | sshpass -p {camera_pwd} ssh -T -o HostKeyAlgorithms=ssh-rsa {camera_usr}@{camera_ip}"
+    print(command1)
+    rr = ssh_connect_with_password(server_host, server_user, server_pwd, command1)
     return(rr)
-    #Q1_temp = rr.stdout.split("\n")[0]
 
 @mcp.tool()
 def start_stem_scan(width, height, npause=0, nread=1, flyback=300, write=1):
