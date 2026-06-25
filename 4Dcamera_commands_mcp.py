@@ -3,10 +3,6 @@ import os
 import socket
 import paramiko
 from fastmcp import FastMCP
-import numpy as np
-import yaml
-from numpy.typing import NDArray
-import base64
 from dotenv import load_dotenv
 
 mcp = FastMCP("4Dcamera")
@@ -49,9 +45,7 @@ def send_command(content):
     content : str
         The command to send to the 4D Camera server as a string.
     """
-    # status_text.delete('1.0', tk.END)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print(f"# ============ {s=}")
     s.connect((server_host, int(server_port)))
     s.sendall(content.encode())
     s.shutdown(socket.SHUT_WR)
@@ -88,35 +82,41 @@ def on_new_dark(mode=2, threshold=0, offset=20):
 
 @mcp.tool()
 def on_resync():
-    """The function bound to the Resync GUI button. This will run the syncing routine
-    on the camera head which aligns all of the columns. It will also reset the scan number."""
+    """This will run the syncing routine on the camera head which 
+    syncs the camera head and the FPGAs. It will also reset the scan number.
+    """
     content = "resync"
     send_command(content)
 
 @mcp.tool()
 def on_power_down():
-    """The function bound to the Power down GUI button. This will run the power down
-    script on the camera head effectively shutting down the camera."""
+    """This will run the power down script on the camera head effectively shutting down the camera.
+    
+    Always confirm with the user that they want to power down the camera before running this command.
+    The camera will need to be powered up again before it can be used.
+    """
     content = "powerdowncamera"
     send_command(content)
 
 @mcp.tool()
-def on_power_up(confirm=None, set_temperature=None):
-    """The function bound to the Power Up GUI button. This will run the power up script
-    on the camera head. This will start up the camera so it is ready for operation. If the
-    keywords are not supplied then confirmation pop up windws are shown.
+def on_power_up(set_temperature=True):
+    """This will run the power up script on the camera head.
+    This will start up the camera so it is ready for operation.
+
+    This script has a line that sets the sensor temperature to -10C. 
+    This will usually fail due to the camera cooling too fast.
+    It is suggested to automatically set the temperature to 19C after powering up. 
+    Then the user should manually cool down in -5C increments to -10C. 
+    This will allow the camera to cool down without failing.
 
     Parameters
     ----------
-    confirm : bool
-        Set this to True to skip the confirmation box to power up the camera
     set_temperature : bool
-        Set this to True to skip the confirmation box to set the sensor temperature to 19C after
+        Set this to True to set the sensor temperature to 19C after
         powering up. Otherwise, the temperature is set to -10C and cooling fails.
     """
-    if confirm:
-        content = "powerupcamera"
-        send_command(content)
+    content = "powerupcamera"
+    send_command(content)
 
     if set_temperature:
         content = f"setsensortemperature 19"
@@ -124,39 +124,51 @@ def on_power_up(confirm=None, set_temperature=None):
 
 @mcp.tool()
 def on_set_temperature(temperature=None):
-    """The function bound to the Set temperature GUI button. It reads the 
-    temperature input from a text box and sets the camera temperautre. If
-    the temperature keyword is set then it uses that temperature. The 
-    temperature is in celsius."""
+    """Set the sensor temperature of the 4D Camera. The 
+    temperature is in celsius. Possible values are between -10C and 19C non-inclusive.
+    The camera is normally operated when the temperature is at -9.9C."""
     content = f"setsensortemperature {temperature}"
     send_command(content)
 
 @mcp.tool()
 def on_get_temperature():
-    """This reads the temperature from the sensor. Only the Q1 temperature is important. This parses
-    the output from the sensor and returns only the needed value in celsius."""
+    """This reads the temperature from the sensor. Only the Q1 temperature is important."""
     command1 = f"echo \"dsh sensor temp\" | sshpass -p {camera_pwd} ssh -T -o HostKeyAlgorithms=ssh-rsa {camera_usr}@{camera_ip}"
-    print(command1)
     rr = ssh_connect_with_password(server_host, server_user, server_pwd, command1)
     return(rr)
 
 @mcp.tool()
-def start_stem_scan(width, height, npause=0, nread=1, flyback=300, write=1):
-    '''Take a stem scan'''
-    command = f"startstemscan {npause} {nread} {width} {height} {flyback} {write}"
+def start_stem_scan(width, height, npause=0, nread=1, flyback=300):
+    '''Take a data set with the 4D Camera.
+    
+    Parameters
+    ----------
+    width : int
+        The width of the scan area.
+    height : int
+        The height of the scan area.
+    npause : int
+        The number of frames to pause between acquisition at each position. This slows
+        down the rate of frame acquisition allowing time for processing.
+    nread : int
+        The number of frames to read at each scan position. This is typically 1, but can be increased to average multiple frames effectively increasing the exposure time.
+    flyback : int
+        The flyback time. The number of frames to wait after a scan line is completed before starting the next scan line.
+
+    '''
+    command = f"startstemscan {npause} {nread} {width} {height} {flyback} 1"
     send_command(command)
 
 @mcp.tool()
 def insert_camera():
-    ''' Insert camera into beam path.'''
+    ''' Insert 4D Camera into beam path.'''
     send_command('insertcamera')
 
 
 @mcp.tool()
 def retract_camera():
-    '''Retract camera from beam path.'''
+    '''Retract 4D Camera from beam path.'''
     send_command('retractcamera')
-
 
 
 if __name__ == "__main__":
