@@ -339,7 +339,9 @@ class GatanServer():
             raise
 
     def acquire_4dcamera_scan(self, params):
-        """Acquires a 4D-STEM dataset.
+        """Acquires a 4D-STEM dataset. The code also reads the dm4 file and returns the data and metadata
+        for the simultaneously acquired HAADF-STEM data from a DM4 file. The 4D Camera data is captured by
+        the 4D Camera backend and is not returned by this function.
 
         Parameters
         ----------
@@ -347,6 +349,12 @@ class GatanServer():
             The parameter dictionary for acquiring a 4D-STEM dataset with the 4D Camera.
             It requires pwidth, pheight, nread, and rotation keys.
         
+        Returns
+        -------
+        : tuple
+            A tuple containing the 2D simultaneously acquired HAADF-STEM data as a numpy array and a metadata 
+            dictionary.
+
         """
         # Acquire the data
         self.call_4DCam_script(params)
