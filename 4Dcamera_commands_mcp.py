@@ -172,4 +172,5 @@ def retract_camera():
 
 
 if __name__ == "__main__":
-    mcp.run(transport = "http", port = 8000)
+    # mcp.run(transport = "sse", port = 8003)
+    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8083)
