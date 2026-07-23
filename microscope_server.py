@@ -19,6 +19,7 @@ import pynetstring
 import time
 import logging
 import traceback
+import mouse
 
 from PIL import Image, ImageGrab
 
