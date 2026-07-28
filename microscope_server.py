@@ -257,7 +257,7 @@ class MicroscopeControl():
             self.w2D.name = self.window_name
             self.d1 = self.w2D.addDisplay('Image 1 Display', 0,0,3,1)
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
-        #self.TIA.ActivateDisplayWindow(self.window_name)
+        self.TIA.ActivateDisplayWindow(self.window_name)
         
     def get_mag(self):
         """Get the STEM magnification.
@@ -594,6 +594,7 @@ class MicroscopeControl():
         current settings. """
         md = {}
         md['microscope name'] = "TEAM 0.5"
+        md['mode'] = self._create_mode_string()
         md['high tension'] = self._microscope.Gun.HTValue
         md['spot size index'] = self.Ill.SpotsizeIndex
         md['defocus'] = self.Proj.Defocus # Ill has ProbeDefocus but that is not useful
@@ -611,6 +612,37 @@ class MicroscopeControl():
         except:
             pass
         return md
+
+    def _create_mode_string(self):
+        """Build a mode string. This has information about the
+        scanning mode: STEM or TEM
+        illumination mode: microprobe or nanoprobe
+        projection mode: image or diffraction
+        projection submode: only SA is currently supported
+        """
+        mode = ''
+        if self._microscope.InstrumentModeControl.InstrumentMode == 1:
+            mode += 'STEM'
+        elif self._microscope.InstrumentModeControl.InstrumentMode == 0:
+            mode += 'TEM'
+        
+        if self._microscope.Illumination.Mode == 0:
+            mode += ' nanoprobe'
+        elif self._microscope.Illumination.Mode == 1:
+            mode += ' microprobe'
+
+        if self._microscope.Projection.Mode == 2:
+            mode += ' diffraction'
+        elif self._microscope.Projection.Mode == 1:
+            mode += ' image'
+
+        if self._microscope.Projection.SubMode == 6:
+            mode += ' SA'
+        else:
+            print('Unknown Projection SubMode')
+
+        print('mode = {}'.format(mode))
+        return mode
     
     def get_beam_tilt(self):
         """Get the STEM rotation center which is the beam tilt in radians.
