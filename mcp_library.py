@@ -828,7 +828,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
     None.
 
     '''
-    cenetered = False
+    centered = False
     for ii in range(ntries):
         
         curImage, pixelSize = acquire_image(dwell_search, (image_shape, image_shape))
