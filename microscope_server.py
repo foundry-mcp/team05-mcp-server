@@ -257,7 +257,7 @@ class MicroscopeControl():
             self.w2D.name = self.window_name
             self.d1 = self.w2D.addDisplay('Image 1 Display', 0,0,3,1)
             self.disp = self.d1.AddImage('Image 1', sizeX, sizeY, self.TIA.Calibration2D(0,0,1,1,0,0))
-        self.TIA.ActivateDisplayWindow(self.window_name)
+        # self.TIA.ActivateDisplayWindow(self.window_name) # this causes a Signal linking error. Not sure why
         
     def get_mag(self):
         """Get the STEM magnification.
