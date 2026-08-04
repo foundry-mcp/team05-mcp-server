@@ -65,11 +65,12 @@ def get_metadata():
     """
     d = {'type': 'get_metadata'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 def create_dims(dataTop, pix):
     """ Create dims for the EMD file."""
@@ -88,7 +89,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         shape = data.shape
         microscope_name = 'TEAM 0.5'
         md = get_metadata()
-        
+
         dataroot = f.create_group('/data')
         
         # Initialize the data set
@@ -100,21 +101,22 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
 
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
-        microscope.attrs['high tension'] = md['high tension']
-        microscope.attrs['spot size index'] = md['spot size index']
-        microscope.attrs['defocus'] = md['defocus']
-        microscope.attrs['convergence angle'] = md['convergence angle']
-        microscope.attrs['camera length'] = md['camera length']
-        microscope.attrs['camera length index'] = md['camera length index']
-        microscope.attrs['condenser stigmator'] = md['condenser stigmator']
-        microscope.attrs['diffraction shift'] = md['diffraction shift']
-        microscope.attrs['stage position'] = md['stage position']
-        try:
-            microscope.attrs['stem rotation'] = md['stem rotation']
-            microscope.attrs['stem field of view'] = md['stem field of view']
-            microscope.attrs['stem magnification'] = md['stem magnification']
-        except:
-            pass
+        if md:
+            microscope.attrs['high tension'] = md['high tension']
+            microscope.attrs['spot size index'] = md['spot size index']
+            microscope.attrs['defocus'] = md['defocus']
+            microscope.attrs['convergence angle'] = md['convergence angle']
+            microscope.attrs['camera length'] = md['camera length']
+            microscope.attrs['camera length index'] = md['camera length index']
+            microscope.attrs['condenser stigmator'] = md['condenser stigmator']
+            microscope.attrs['diffraction shift'] = md['diffraction shift']
+            microscope.attrs['stage position'] = md['stage position']
+            try:
+                microscope.attrs['stem rotation'] = md['stem rotation']
+                microscope.attrs['stem field of view'] = md['stem field of view']
+                microscope.attrs['stem magnification'] = md['stem magnification']
+            except:
+                pass
 
         user = f.create_group('user')
         user.attrs['user name'] = user_name
@@ -229,22 +231,24 @@ def acquire_ceos_tableau(angle=18, tableau_type='fast'):
     """
     d = {'type': 'tableau', 'angle': angle, 'tabType': tableau_type}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()        
 def acquire_c1a1(WD_x=0.0, WD_y=0.0):
     """ Tilt and acquire a C1A1 measurement. WD is in mrad."""
     d = {'type': 'c1a1', 'ab_values':{'WD_x':WD_x, 'WD_y':WD_y}}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def change_aberrations(ab_values:dict):
@@ -350,6 +354,37 @@ def move_stage_delta(dX:float=0, dY:float=0, dZ:float=0, dA:float=0, dB:float=0)
 
     '''
     dPos = {'type':'move_stage', 'dX':dX, 'dY':dY, 'dZ':dZ, 'dA':dA, 'dB':dB}
+    microscope_client.send_traffic(dPos)
+
+@mcp.tool()
+def move_stage_absolute(X:float | None, Y:float|None, Z:float|None, A:float|None, B:float|None):
+    '''
+    Moves and tilts stage to the desired position. The values
+    of X, Y, and Z are in are in meters. A is alpha tilt and B is beta tilt. The values of A and B are angles 
+    which are used to tilt the stage. A is similar to roll and B is similar to pitch in an airplane. There is 
+    no way to implement a yaw rotation.
+
+    If a input value is None then the current stage position is kept constant.
+
+    Parameters
+    ----------
+    X : float, optional
+        New x position in meters.
+    Y : float, optional
+        New y position in meters.
+    Z : float, optional
+        New z position in meters.
+    A : float, optional
+        New alpha angle in radians.
+    B : float, optional
+        New beta alngle in radians
+
+    Returns
+    -------
+    None.
+
+    '''
+    dPos = {'type':'move_stage_goto', 'X':X, 'Y':Y, 'Z':Z, 'A':A, 'B':B}
     microscope_client.send_traffic(dPos)
 
 @mcp.tool()
