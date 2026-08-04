@@ -340,6 +340,7 @@ class MicroscopeControl():
         The type of holder inserted. Possible values are invalid, single, double, none.
         
         """
+        print('holder = {}'.format(self.Stage.Holder))
         return self.Stage.Holder
 
     def move_stage_delta(self, dX=0, dY=0, dZ=0, dA=0, dB=0):
