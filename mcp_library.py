@@ -102,6 +102,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         microscope = f.create_group('microscope')
         microscope.attrs['microscope name'] = 'TEAM 0.5'
         if md:
+            microscope.attrs['mode'] = md['mode']
             microscope.attrs['high tension'] = md['high tension']
             microscope.attrs['spot size index'] = md['spot size index']
             microscope.attrs['defocus'] = md['defocus']
@@ -863,7 +864,7 @@ def center_region(reference_image:npt.NDArray, max_distance:float=100e-9, ntries
     None.
 
     '''
-    cenetered = False
+    centered = False
     for ii in range(ntries):
         
         curImage, pixelSize = acquire_image(dwell_search, (image_shape, image_shape))
