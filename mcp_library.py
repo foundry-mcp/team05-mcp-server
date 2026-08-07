@@ -87,37 +87,37 @@ def create_dims(dataTop, pix):
 def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=''):
     with h5py.File(file_path, 'w') as f:
         shape = data.shape
-        microscope_name = 'TEAM 0.5'
         md = get_metadata()
 
         dataroot = f.create_group('/data')
-        
+
         # Initialize the data set
         dataTop = dataroot.create_group('single')
         dset = dataTop.create_dataset('data', shape, data.dtype)
-        
+
         # Create the EMD dimension datasets
         _ = create_dims(dataTop, shape)
 
         microscope = f.create_group('microscope')
-        microscope.attrs['microscope name'] = 'TEAM 0.5'
         if md:
-            microscope.attrs['mode'] = md['mode']
-            microscope.attrs['high tension'] = md['high tension']
-            microscope.attrs['spot size index'] = md['spot size index']
-            microscope.attrs['defocus'] = md['defocus']
-            microscope.attrs['convergence angle'] = md['convergence angle']
-            microscope.attrs['camera length'] = md['camera length']
-            microscope.attrs['camera length index'] = md['camera length index']
-            microscope.attrs['condenser stigmator'] = md['condenser stigmator']
-            microscope.attrs['diffraction shift'] = md['diffraction shift']
-            microscope.attrs['stage position'] = md['stage position']
-            try:
-                microscope.attrs['stem rotation'] = md['stem rotation']
-                microscope.attrs['stem field of view'] = md['stem field of view']
-                microscope.attrs['stem magnification'] = md['stem magnification']
-            except:
-                pass
+            metadata_keys = [
+                'mode',
+                'high tension',
+                'spot size index',
+                'defocus',
+                'convergence angle',
+                'camera length',
+                'camera length index',
+                'condenser stigmator',
+                'diffraction shift',
+                'stage position',
+                'stem rotation',
+                'stem field of view',
+                'stem magnification',
+            ]
+            for key in metadata_keys:
+                if key in md:
+                    microscope.attrs[key] = md[key]
 
         user = f.create_group('user')
         user.attrs['user name'] = user_name
