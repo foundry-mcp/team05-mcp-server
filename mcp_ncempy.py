@@ -307,5 +307,5 @@ if __name__ == "__main__":
     # This allows the server side to show data as images
     plotter = ProcessPlotter()
     
-    mcp.run(transport="sse", host="127.0.0.1", port=8082)
-    # mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port=8082)
+    #mcp.run(transport="sse", host="127.0.0.1", port=8082)
+    mcp.run(transport="sse", host="team05-support.dhcp.lbl.gov", port=8082)
