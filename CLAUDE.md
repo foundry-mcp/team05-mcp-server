@@ -58,7 +58,9 @@ mcp_library.py (Support PC)
 - `MicroscopeControl` - Interfaces with TEMScripting and TIA via COM objects
 - `MicroscopeServer` - Main server loop handling requests
 
-Runs using WinPython 3.4 on Microscope PC.
+Runs on a legacy Microscope PC using WinPython 3.4.4. Python 3.4.4 is the maximum
+supported version for this server; keep its code compatible with Python 3.4.4 and
+avoid newer language syntax, standard-library APIs, and dependencies.
 
 **gatan_server.py**: ZeroMQ server that dynamically generates Digital Micrograph scripts using templates from `dm_scripts.py`, writes them to `C:/Users/VALUEDGATANCUSTOMER/Documents/automation/`, and executes them via subprocess calls to DigitalMicrograph.exe. Runs using globally installed Python on Gatan PC.
 

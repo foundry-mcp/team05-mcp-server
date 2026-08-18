@@ -380,7 +380,7 @@ class MicroscopeControl():
         stageObj.B += float(dB)
         self.Stage.GoTo(stageObj, n)
     
-    def move_stage_goto(self, X:float|None, Y:float|None, Z:float|None, A:float|None, B:float|None):
+    def move_stage_goto(self, X, Y, Z, A, B):
         """Set the stage position to the values indicated. This moves directly
         to those coordinates. X, Y, Z are in meters and alpha, beta are in 
         radians. Beta tilt is only implemented if a double tilt holder is detected.
