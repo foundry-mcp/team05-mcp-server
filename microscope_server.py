@@ -321,10 +321,7 @@ class MicroscopeControl():
            The X, Y, Z, alpha, beta values of the stage. The position 
            is in meters and the angles are in radians.
         '''
-        print('a')
         stageObj = self.Stage.Position
-        print('Stage position0 = {}'.format(stageObj))
-        print('returning')
         return stageObj.X, stageObj.Y, stageObj.Z, stageObj.A, stageObj.B
 
     def get_holder_type(self,):
