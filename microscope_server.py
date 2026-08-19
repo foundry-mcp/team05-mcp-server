@@ -412,15 +412,15 @@ class MicroscopeControl():
         
         print('Going to {}, {}, {}, {}, {}'.format(X, Y, Z, A, B))
         stageObj = self.Stage.Position # get the current position to have a position object.
-        if X:
+        if X is not None:
             stageObj.X = float(X) # meters
-        if Y:
+        if Y is not None:
             stageObj.Y = float(Y)
-        if Z:
+        if Z is not None:
             stageObj.Z = float(Z)
-        if A:
+        if A is not None:
             stageObj.A = float(A) # radians
-        if B:
+        if B is not None:
             stageObj.B = float(B) # radians
         self.Stage.GoTo(stageObj, n)
         
