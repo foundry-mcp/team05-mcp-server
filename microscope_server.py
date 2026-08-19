@@ -333,8 +333,8 @@ class MicroscopeControl():
         
         Returns
         -------
-        : str
-        The type of holder inserted. Possible values are invalid, single, double, none.
+        : 0 or None
+        Returns 0 if the holder type is invalid or none. Otherwise returns None.
         
         """
         print('holder = {}'.format(self.Stage.Holder))
@@ -354,8 +354,8 @@ class MicroscopeControl():
 
         Returns
         -------
-        : str or None
-        Returns error with holder name if none or invalid. Otherwise returns None
+        : 0 or None
+        Returns 0 if there is an error. Otherwise returns None
         '''
         
         # this sets the stage bits. 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
@@ -363,10 +363,11 @@ class MicroscopeControl():
         holder = self.get_holder_type()
         if holder == 'single':
             n = 15
-        elif holder =='double':
+        elif holder == 2:  # double tilt holder
             n = 16
         else:
-            return 'Can not move holder named {}'.format(holder)
+            print('Can not move holder named {}'.format(holder))
+            return 0
         
         # print('Moving by {}, {}, {} meters and {}, {} radians'.format(dX, dY, dZ, dA, dB))
         stageObj = self.Stage.Position # get the current position
@@ -394,8 +395,8 @@ class MicroscopeControl():
         
         Returns
         -------
-        : str or None
-        Returns error with holder name if none or invalid. Otherwise returns None
+        : 0 or None
+        Returns 0 if there is an error. Otherwise returns None
         """
         # this sets the stage bits.
         # 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
@@ -403,10 +404,11 @@ class MicroscopeControl():
         holder = self.get_holder_type()
         if holder == 'single':
             n = 15
-        elif holder =='double':
+        elif holder == 2:  # double tilt holder
             n = 16
         else:
-            return 'Can not move holder named {}'.format(holder)
+            print('Can not move holder named {}'.format(holder))
+            return 0
         
         print('Going to {}, {}, {}, {}, {}'.format(X, Y, Z, A, B))
         stageObj = self.Stage.Position # get the current position to have a position object.
@@ -985,7 +987,10 @@ class MicroscopeServer():
             self.d['dA'],
             self.d['dB']
         )
-        return 'stage moved', reply_data
+        if reply_data == 0:
+            return 'error with stage movement', None
+        else:
+            return 'stage moved', None
 
     def _handle_move_stage_goto(self):
         """Handle stage movement to absolute position."""
@@ -996,7 +1001,10 @@ class MicroscopeServer():
             self.d['A'],
             self.d['B']
         )
-        return 'stage moved', reply_data
+        if reply_data == 0:
+            return 'error with stage movement', None
+        else:
+            return 'stage moved', None
 
     def _handle_get_mag(self):
         """Handle get magnification"""
