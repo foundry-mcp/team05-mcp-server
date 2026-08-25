@@ -298,8 +298,8 @@ def get_dm_metadata(directory:str, file_name:str, num=0):
 @mcp.tool()
 def delete_data_in_memory():
     """This frees all data and metdata in memory."""
-    data = {}
-    metadata = {}
+    data.clear()
+    metadata.clear()
 
 if __name__ == "__main__":
     
