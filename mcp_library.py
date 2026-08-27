@@ -11,11 +11,8 @@ the microscope PC and on the Gatan PC.
 
 from pathlib import Path
 import io
-import base64
-import argparse
 import time
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Optional
 
 import pickle
 import numpy as np
@@ -23,16 +20,14 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
-from fastmcp.utilities.types import Image as mcpImage
 
 from fastmcp.resources import FileResource
 from pathlib import Path
-from fastmcp.utilities.types import Image as mcpImage
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import requests
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict
+from pydantic import AnyHttpUrl, AnyUrl, BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from requests.exceptions import HTTPError, RequestException
 
@@ -47,11 +42,24 @@ import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from GUI_Client import BEACON_Client
 
-@mcp.resource("file://TEAM0.5_Parameters.md", mime_type="text/markdown")
-def get_team05_parameter_configurations():
-    with open('TEAM0.5_Parameters.md', mode="r") as f:
-        info = f.read()
-        return info
+mcp.add_resource(
+    FileResource(
+        name="TEAM0.5_Parameters",
+        uri=AnyUrl("file:///TEAM0.5_Parameters.md"),
+        path=Path(__file__).with_name("TEAM0.5_Parameters.md"),
+        mime_type="text/markdown",
+        encoding="utf-8",
+        description=(
+        "Reference calibration tables and hardware parameters for the TEAM 0.5 TEM/STEM instrument across operating voltages (50 kV, 80 kV, 200 kV, 300 kV). "
+        "READ THIS FILE WHEN: "
+        "1. Calculating frame times and selecting optimal STEM dwell/flyback times to prevent timing artifacts. "
+        "2. Matching HAADF-STEM camera lengths (mm) to target inner/outer collection semi-angles (mrad). "
+        "3. Configuring 4D-STEM acquisitions, including camera length calibrations (camera constant, pixel size in Å⁻¹) and differential phase contrast (DPC) rotation/flip offsets (-160° for 80 kV, -9° for 200/300 kV). "
+        "4. Checking spatial sampling limits via OneView camera Nyquist frequencies across magnifications. "
+        "CONTAINS: Standard operating presets, collection semi-angle lookup tables, camera constant calibrations, DPC offset angles, and beam current picoammeter reference notes."
+    ),
+    )
+)
 
 
 def get_metadata():
