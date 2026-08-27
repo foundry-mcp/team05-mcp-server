@@ -10,6 +10,7 @@ the microscope PC and on the Gatan PC.
 """
 
 from pathlib import Path
+import argparse
 import io
 import time
 from typing import Optional
@@ -1291,14 +1292,45 @@ class Gatan_Client():
             print("Timeout occurred.")
             return None
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run the TEAM 0.5 MCP server.'
+    )
+    parser.add_argument(
+        '--microscope-host',
+        default='192.168.0.24',
+        help='Microscope server hostname (default: 192.168.0.24)'
+    )
+    parser.add_argument(
+        '--microscope-port',
+        type=int,
+        default=7001,
+        help='Microscope server port (default: 7001)'
+    )
+    parser.add_argument(
+        '--gatan-host',
+        default='192.168.0.30',
+        help='Gatan server hostname (default: 192.168.0.30)'
+    )
+    parser.add_argument(
+        '--gatan-port',
+        type=int,
+        default=13579,
+        help='Gatan server port (default: 13579)'
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    # TEAM 0.5 microscope PC connection settings
-    mhost = '192.168.0.24'
-    mport = 7001
+    args = parse_args()
     
-    microscope_client = Microscope_Client(mhost, mport) # Communicate with microscope PC
+    microscope_client = Microscope_Client(
+        args.microscope_host, args.microscope_port
+    ) # Communicate with microscope PC
     
-    beacon_client = BEACON_Client(mhost, mport) # Communicate with BEACON on the microscope PC
+    beacon_client = BEACON_Client(
+        args.microscope_host, args.microscope_port
+    ) # Communicate with BEACON on the microscope PC
 
     # Check the connection
     d = {'type': 'ping'}
@@ -1306,11 +1338,9 @@ if __name__ == "__main__":
     if Response:
         print(Response['reply_message'])
 
-    # Gatan PC connection settings
-    ghost = '192.168.0.30'
-    gport = 13579
-    
-    gatan_client = Gatan_Client(ghost, gport) # communicates with the Gatan PC
+    gatan_client = Gatan_Client(
+        args.gatan_host, args.gatan_port
+    ) # communicates with the Gatan PC
 
     #print('Note: MCP run command commented out.') # for testing
     mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
