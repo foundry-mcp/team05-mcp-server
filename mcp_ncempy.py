@@ -5,22 +5,18 @@ Test MCP agent that can load, process, and display data
 @author: Peter Ercius
 """
 
+import io
 from pathlib import Path
-import multiprocessing as mp
 
 from fastmcp import FastMCP
-from datetime import datetime, timedelta
-from typing import Any, Optional
-
-import requests
-from pydantic import AnyHttpUrl, BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from requests.exceptions import HTTPError, RequestException
 
 import ncempy
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")  # render off-screen; images are shown via PIL, not a live matplotlib window
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, NoNorm
+from matplotlib.colors import LogNorm
+from PIL import Image as PILImage
 import mfid
 
 data = {} # a dictionary that holds all the data.
@@ -28,40 +24,29 @@ metadata = {} # a dictionary that holds all the metadata
 
 mcp = FastMCP("NCEMPY MCP")
 
-class ProcessPlotter:
-    """ Creates a plot on the MCP server side that can
-    show images and be updated dynamically. """
-    def __init__(self):
-        self.pipe, plotter_pipe = mp.Pipe()
-        self.plot_process = mp.Process(target=self._plot_process, args=(plotter_pipe,))
-        self.plot_process.start()
-        
-        
-    def _plot_process(self, pipe):
-        self.fig, self.ax = plt.subplots()
-        self.ax.set_title("Dynamic Plot")
-        plt.show(block=False) # Non-blocking show
 
-        while True:
-            if pipe.poll(): # Check for incoming data
-                data = pipe.recv()
-                if data is None: # Signal to close
-                    plt.close(self.fig)
-                    break
-                self.ax.clear()
-                image = data[0]
-                norm = data[1]
-                self.ax.imshow(image, norm=norm)
-                self.fig.canvas.draw()
-                self.fig.canvas.flush_events() # Update the display
+def _render_and_show(image: np.ndarray, norm: str = "linear", title: str | None = None) -> None:
+    """Render an array with matplotlib (colormap/log-norm) and open it in the
+    OS's default image viewer via PIL.Image.show(), which works cross-platform
+    (Windows, macOS, Linux) without needing a persistent plotting process."""
+    fig, ax = plt.subplots()
+    if norm == "log":
+        positive = image[image > 0]
+        vmin = float(positive.min()) if positive.size else 1e-9
+        im = ax.imshow(image, norm=LogNorm(vmin=vmin, vmax=float(image.max())))
+    else:
+        im = ax.imshow(image)
+    if title:
+        ax.set_title(title)
+    fig.colorbar(im, ax=ax)
 
-            plt.pause(0.01) # Small pause to allow events to process
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
 
-    def plot(self, data):
-        self.pipe.send(data)
+    PILImage.open(buf).show(title=title)
 
-    def close(self):
-        self.pipe.send(None) # Send signal to close the plot
 
 @mcp.tool()
 def test_this_server(from_llm:str):
@@ -182,36 +167,44 @@ def calculate_image_statistics(file_id:str):
     return mm
 
 @mcp.tool()
-def plot_data(file_id:str):
-    """This uses matplotlib imshow to plot the data.
-    This will show up on the server only.
-    
+def plot_data(file_id: str) -> str:
+    """Displays the image in the OS's default image viewer, on the machine
+    running this server (not returned to the LLM).
+
     Parameters
     ----------
     file_id : str
     The file_id to use to access the data
+
+    Returns
+    -------
+    : str
+    A confirmation message.
     """
-    print('plotting')
     image = data[file_id]
-    norm = 'linear'
-    plotter.plot((image, norm))
+    _render_and_show(image, norm="linear", title=file_id)
+    return f"Displayed {file_id} in the default image viewer."
 
 @mcp.tool()
-def plot_data_fft(file_id:str):
-    """This uses matplotlib imshow to plot the 
-    fast fourier transform (FFT) of the data.
-    This will show up on the server only.
-    
+def plot_data_fft(file_id: str) -> str:
+    """Displays the fast fourier transform (FFT) of the image in the OS's
+    default image viewer, on the machine running this server (not returned
+    to the LLM).
+
     Parameters
     ----------
     file_id : str
     The file_id to use to access the data
+
+    Returns
+    -------
+    : str
+    A confirmation message.
     """
-    print('plotting fft')
     image = np.abs(np.fft.fftshift(np.fft.fft2(data[file_id])))
-    norm = 'log'
-    plotter.plot((image, norm))
-    
+    _render_and_show(image, norm="log", title=f"{file_id} (FFT)")
+    return f"Displayed the FFT of {file_id} in the default image viewer."
+
 
 @mcp.tool()
 def get_loaded_data():
@@ -298,14 +291,8 @@ def get_dm_metadata(directory:str, file_name:str, num=0):
 @mcp.tool()
 def delete_data_in_memory():
     """This frees all data and metdata in memory."""
-    data = {}
-    metadata = {}
+    data.clear()
+    metadata.clear()
 
 if __name__ == "__main__":
-    
-    # A dynamic matplotlib plotter
-    # This allows the server side to show data as images
-    plotter = ProcessPlotter()
-    
-    #mcp.run(transport="sse", host="127.0.0.1", port=8082)
-    mcp.run(transport="sse", host="team05-support.dhcp.lbl.gov", port=8082)
+    mcp.run(transport="http", host="127.0.0.1", port=8082)
