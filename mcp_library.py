@@ -23,10 +23,6 @@ import zmq
 from fastmcp import FastMCP
 
 from fastmcp.resources import FileResource
-from pathlib import Path
-from typing import Optional
-
-from pydantic import AnyUrl
 
 import h5py
 import mfid
@@ -37,15 +33,16 @@ from PIL import Image as pilImage
 
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
-from GUI_Client import BEACON_Client
+from beacon_client import BEACON_Client
+
+parameters_path = Path(__file__).with_name("TEAM0.5_Parameters.md").resolve()
 
 mcp.add_resource(
     FileResource(
         name="TEAM0.5_Parameters",
-        uri=AnyUrl("file:///TEAM0.5_Parameters.md"),
-        path=Path(__file__).with_name("TEAM0.5_Parameters.md"),
+        uri=parameters_path.as_uri(),
+        path=parameters_path,
         mime_type="text/markdown",
-        encoding="utf-8",
         description=(
         "Reference calibration tables and hardware parameters for the TEAM 0.5 TEM/STEM instrument across operating voltages (50 kV, 80 kV, 200 kV, 300 kV). "
         "READ THIS FILE WHEN: "
