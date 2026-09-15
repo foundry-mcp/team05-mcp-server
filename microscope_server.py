@@ -647,7 +647,8 @@ class MicroscopeControl():
     def get_screen_position(self):
         return self.Camera.ScreenPosition
 
-    def set_main_screen(self, main_screen):
+    def set_main_screen(self, main_screen:int):
+        """Set the main screen position. 1=unknown, 2=up, 3=down"""
         self.Camera.MainScreen = main_screen
         
     def get_metadata(self):
@@ -1037,6 +1038,9 @@ class MicroscopeServer():
 
     def _handle_get_screen_current(self):
         """Handle get screen current"""
+        if self._handle_get_screen_position()[1] != 3:
+            self._hangle_set_screen_position()
+
         return 'screen current obtained', self.microscope.get_screen_current()
 
     def _handle_get_screen_position(self):
