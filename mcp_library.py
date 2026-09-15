@@ -546,6 +546,40 @@ def get_camera_length_index():
             return reply_data
 
 @mcp.tool()
+def get_screen_current():
+    '''
+    Get the current measured beam current from the microscope screen.
+
+    Returns
+    -------
+    : float
+        Screen current.
+
+    '''
+    d = {'type': 'get_screen_current'}
+    Response = microscope_client.send_traffic(d)
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
+
+@mcp.tool()
+def set_main_screen(main_screen:int):
+    '''
+    Set the microscope's main screen using the TEMScripting screen value.
+
+    Parameters
+    ----------
+    main_screen : int
+        TEMScripting MainScreen value.
+
+    '''
+    d = {'type': 'set_main_screen', 'main_screen': main_screen}
+    microscope_client.send_traffic(d)
+
+@mcp.tool()
 def set_mag(mag:int):
     '''
     Set the STEM magnification.
