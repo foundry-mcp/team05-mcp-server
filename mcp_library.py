@@ -10,12 +10,10 @@ the microscope PC and on the Gatan PC.
 """
 
 from pathlib import Path
-import io
-import base64
 import argparse
+import io
 import time
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Optional
 
 import pickle
 import numpy as np
@@ -23,18 +21,8 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
-from fastmcp.utilities.types import Image as mcpImage
 
 from fastmcp.resources import FileResource
-from pathlib import Path
-from fastmcp.utilities.types import Image as mcpImage
-from datetime import datetime, timedelta
-from typing import Any, Optional
-
-import requests
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from requests.exceptions import HTTPError, RequestException
 
 import h5py
 import mfid
@@ -45,13 +33,27 @@ from PIL import Image as pilImage
 
 import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
-from GUI_Client import BEACON_Client
+from beacon_client import BEACON_Client
 
-@mcp.resource("file://TEAM0.5_Parameters.md", mime_type="text/markdown")
-def get_team05_parameter_configurations():
-    with open('TEAM0.5_Parameters.md', mode="r") as f:
-        info = f.read()
-        return info
+parameters_path = Path(__file__).with_name("TEAM0.5_Parameters.md").resolve()
+
+mcp.add_resource(
+    FileResource(
+        name="TEAM0.5_Parameters",
+        uri=parameters_path.as_uri(),
+        path=parameters_path,
+        mime_type="text/markdown",
+        description=(
+        "Reference calibration tables and hardware parameters for the TEAM 0.5 TEM/STEM instrument across operating voltages (50 kV, 80 kV, 200 kV, 300 kV). "
+        "READ THIS FILE WHEN: "
+        "1. Calculating frame times and selecting optimal STEM dwell/flyback times to prevent timing artifacts. "
+        "2. Matching HAADF-STEM camera lengths (mm) to target inner/outer collection semi-angles (mrad). "
+        "3. Configuring 4D-STEM acquisitions, including camera length calibrations (camera constant, pixel size in Å⁻¹) and differential phase contrast (DPC) rotation/flip offsets (-160° for 80 kV, -9° for 200/300 kV). "
+        "4. Checking spatial sampling limits via OneView camera Nyquist frequencies across magnifications. "
+        "CONTAINS: Standard operating presets, collection semi-angle lookup tables, camera constant calibrations, DPC offset angles, and beam current picoammeter reference notes."
+    ),
+    )
+)
 
 
 def get_metadata():
@@ -65,11 +67,12 @@ def get_metadata():
     """
     d = {'type': 'get_metadata'}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 def create_dims(dataTop, pix):
     """ Create dims for the EMD file."""
@@ -86,36 +89,37 @@ def create_dims(dataTop, pix):
 def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=''):
     with h5py.File(file_path, 'w') as f:
         shape = data.shape
-        microscope_name = 'TEAM 0.5'
         md = get_metadata()
-        
+
         dataroot = f.create_group('/data')
-        
+
         # Initialize the data set
         dataTop = dataroot.create_group('single')
         dset = dataTop.create_dataset('data', shape, data.dtype)
-        
+
         # Create the EMD dimension datasets
         _ = create_dims(dataTop, shape)
 
         microscope = f.create_group('microscope')
-        microscope.attrs['microscope name'] = 'TEAM 0.5'
-        microscope.attrs['mode'] = md['mode']
-        microscope.attrs['high tension'] = md['high tension']
-        microscope.attrs['spot size index'] = md['spot size index']
-        microscope.attrs['defocus'] = md['defocus']
-        microscope.attrs['convergence angle'] = md['convergence angle']
-        microscope.attrs['camera length'] = md['camera length']
-        microscope.attrs['camera length index'] = md['camera length index']
-        microscope.attrs['condenser stigmator'] = md['condenser stigmator']
-        microscope.attrs['diffraction shift'] = md['diffraction shift']
-        microscope.attrs['stage position'] = md['stage position']
-        try:
-            microscope.attrs['stem rotation'] = md['stem rotation']
-            microscope.attrs['stem field of view'] = md['stem field of view']
-            microscope.attrs['stem magnification'] = md['stem magnification']
-        except:
-            pass
+        if md:
+            metadata_keys = [
+                'mode',
+                'high tension',
+                'spot size index',
+                'defocus',
+                'convergence angle',
+                'camera length',
+                'camera length index',
+                'condenser stigmator',
+                'diffraction shift',
+                'stage position',
+                'stem rotation',
+                'stem field of view',
+                'stem magnification',
+            ]
+            for key in metadata_keys:
+                if key in md:
+                    microscope.attrs[key] = md[key]
 
         user = f.create_group('user')
         user.attrs['user name'] = user_name
@@ -230,22 +234,24 @@ def acquire_ceos_tableau(angle=18, tableau_type='fast'):
     """
     d = {'type': 'tableau', 'angle': angle, 'tabType': tableau_type}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()        
 def acquire_c1a1(WD_x=0.0, WD_y=0.0):
     """ Tilt and acquire a C1A1 measurement. WD is in mrad."""
     d = {'type': 'c1a1', 'ab_values':{'WD_x':WD_x, 'WD_y':WD_y}}
     Response = microscope_client.send_traffic(d)
-    if Response['reply_data'] is None:
-        raise Exception('Command failed.')
-    else:
-        reply_data = Response['reply_data']
-        return reply_data
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
 
 @mcp.tool()
 def change_aberrations(ab_values:dict):
@@ -351,6 +357,37 @@ def move_stage_delta(dX:float=0, dY:float=0, dZ:float=0, dA:float=0, dB:float=0)
 
     '''
     dPos = {'type':'move_stage', 'dX':dX, 'dY':dY, 'dZ':dZ, 'dA':dA, 'dB':dB}
+    microscope_client.send_traffic(dPos)
+
+@mcp.tool()
+def move_stage_absolute(X:float | None, Y:float|None, Z:float|None, A:float|None, B:float|None):
+    '''
+    Moves and tilts stage to the desired position. The values
+    of X, Y, and Z are in are in meters. A is alpha tilt and B is beta tilt. The values of A and B are angles 
+    which are used to tilt the stage. A is similar to roll and B is similar to pitch in an airplane. There is 
+    no way to implement a yaw rotation.
+
+    If a input value is None then the current stage position is kept constant.
+
+    Parameters
+    ----------
+    X : float, optional
+        New x position in meters.
+    Y : float, optional
+        New y position in meters.
+    Z : float, optional
+        New z position in meters.
+    A : float, optional
+        New alpha angle in radians.
+    B : float, optional
+        New beta alngle in radians
+
+    Returns
+    -------
+    None.
+
+    '''
+    dPos = {'type':'move_stage_goto', 'X':X, 'Y':Y, 'Z':Z, 'A':A, 'B':B}
     microscope_client.send_traffic(dPos)
 
 @mcp.tool()
@@ -1252,14 +1289,45 @@ class Gatan_Client():
             print("Timeout occurred.")
             return None
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run the TEAM 0.5 MCP server.'
+    )
+    parser.add_argument(
+        '--microscope-host',
+        default='192.168.0.24',
+        help='Microscope server hostname (default: 192.168.0.24)'
+    )
+    parser.add_argument(
+        '--microscope-port',
+        type=int,
+        default=7001,
+        help='Microscope server port (default: 7001)'
+    )
+    parser.add_argument(
+        '--gatan-host',
+        default='192.168.0.30',
+        help='Gatan server hostname (default: 192.168.0.30)'
+    )
+    parser.add_argument(
+        '--gatan-port',
+        type=int,
+        default=13579,
+        help='Gatan server port (default: 13579)'
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    # TEAM 0.5 microscope PC connection settings
-    mhost = '192.168.0.24'
-    mport = 7001
+    args = parse_args()
     
-    microscope_client = Microscope_Client(mhost, mport) # Communicate with microscope PC
+    microscope_client = Microscope_Client(
+        args.microscope_host, args.microscope_port
+    ) # Communicate with microscope PC
     
-    beacon_client = BEACON_Client(mhost, mport) # Communicate with BEACON on the microscope PC
+    beacon_client = BEACON_Client(
+        args.microscope_host, args.microscope_port
+    ) # Communicate with BEACON on the microscope PC
 
     # Check the connection
     d = {'type': 'ping'}
@@ -1267,11 +1335,9 @@ if __name__ == "__main__":
     if Response:
         print(Response['reply_message'])
 
-    # Gatan PC connection settings
-    ghost = '192.168.0.30'
-    gport = 13579
-    
-    gatan_client = Gatan_Client(ghost, gport) # communicates with the Gatan PC
+    gatan_client = Gatan_Client(
+        args.gatan_host, args.gatan_port
+    ) # communicates with the Gatan PC
 
     #print('Note: MCP run command commented out.') # for testing
     mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)

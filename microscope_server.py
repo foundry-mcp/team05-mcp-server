@@ -321,14 +321,28 @@ class MicroscopeControl():
            The X, Y, Z, alpha, beta values of the stage. The position 
            is in meters and the angles are in radians.
         '''
-        print('a')
         stageObj = self.Stage.Position
-        print('Stage position0 = {}'.format(stageObj))
-        print('returning')
         return stageObj.X, stageObj.Y, stageObj.Z, stageObj.A, stageObj.B
 
+    def get_holder_type(self,):
+        """Returns the holder type.
+
+        A single tilt holder can only tilt the sample using the alpha value. The double tilt
+        holder can tilt along two orthogonal axes called alpha and beta. invalid indicates 
+        an unknown holder. none indicates no holder is inserted.
+        
+        Returns
+        -------
+        : 0 or None
+        Returns 0 if the holder type is invalid or none. Otherwise returns None.
+        
+        """
+        print('holder = {}'.format(self.Stage.Holder))
+        return self.Stage.Holder
+
     def move_stage_delta(self, dX=0, dY=0, dZ=0, dA=0, dB=0):
-        ''' Move stage by delta value. The position values are in meters and the
+        ''' Move stage by delta value. This changes the stage position by the requested 
+        values rather than to an absolute position. The position values are in meters and the
         angle values are in radians.
         
         Parameters
@@ -337,10 +351,25 @@ class MicroscopeControl():
         The change in stage position values in meters
         dA, dB : float
         The change in stage alpha and beta rotation values in radians. B is not implemented currently.
+
+        Returns
+        -------
+        : 0 or None
+        Returns 0 if there is an error. Otherwise returns None
         '''
-        #n = int('{}{}{}{}{}'.format(int(dB==1), int(dA==1), int(dZ==1), int(dY==1), int(dX==1)), 2)
-        n = 15 # this sets the stage bits. 15 in binary is 1111 so the X, Y, Z, alpha are allowed to change
-        print('Moving by {}, {}, {} meters and {}, {} radians'.format(dX, dY, dZ, dA, dB))
+        
+        # this sets the stage bits. 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
+        # 16 is 11111 which adds beta tilt
+        holder = self.get_holder_type()
+        if holder == 'single':
+            n = 15
+        elif holder == 2:  # double tilt holder
+            n = 16
+        else:
+            print('Can not move holder named {}'.format(holder))
+            return 0
+        
+        # print('Moving by {}, {}, {} meters and {}, {} radians'.format(dX, dY, dZ, dA, dB))
         stageObj = self.Stage.Position # get the current position
         stageObj.X += float(dX)
         stageObj.Y += float(dY)
@@ -348,29 +377,51 @@ class MicroscopeControl():
         stageObj.A += float(dA)
         stageObj.B += float(dB)
         self.Stage.GoTo(stageObj, n)
-        #print('Stage moved to = {}'.format(self.Stage.Position()))
     
     def move_stage_goto(self, X, Y, Z, A, B):
-        """Set the stage position to the values input. This moves directly
+        """Set the stage position to the values indicated. This moves directly
         to those coordinates. X, Y, Z are in meters and alpha, beta are in 
-        radians. Beta tilt is not currently implemented.
+        radians. Beta tilt is only implemented if a double tilt holder is detected.
         
+        None values will not be used and the stage position of that axis will be
+        kept the same.
+
         Parameters
         ----------
-        X, Y, Z : float
+        X, Y, Z : float | None
         The stage position values in meters
-        A, B : float
-        The stage alpha and beta rotation values in radians. B is not implemented currently
+        A, B : float | None
+        The stage alpha and beta rotation values in radians.
         
+        Returns
+        -------
+        : 0 or None
+        Returns 0 if there is an error. Otherwise returns None
         """
-        n = 15 # this sets the stage bits. 15 in binary is 1111 so the X, Y, Z, alpha are allowed to change
+        # this sets the stage bits.
+        # 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
+        # 16 is 11111 which adds beta tilt
+        holder = self.get_holder_type()
+        if holder == 'single':
+            n = 15
+        elif holder == 2:  # double tilt holder
+            n = 16
+        else:
+            print('Can not move holder named {}'.format(holder))
+            return 0
+        
         print('Going to {}, {}, {}, {}, {}'.format(X, Y, Z, A, B))
         stageObj = self.Stage.Position # get the current position to have a position object.
-        stageObj.X = float(X) # meters
-        stageObj.Y = float(Y)
-        stageObj.Z = float(Z)
-        stageObj.A = float(A) # radians
-        stageObj.B = float(B) # not currently implemented.
+        if X is not None:
+            stageObj.X = float(X) # meters
+        if Y is not None:
+            stageObj.Y = float(Y)
+        if Z is not None:
+            stageObj.Z = float(Z)
+        if A is not None:
+            stageObj.A = float(A) # radians
+        if B is not None:
+            stageObj.B = float(B) # radians
         self.Stage.GoTo(stageObj, n)
         
     def blank(self):
@@ -936,10 +987,13 @@ class MicroscopeServer():
             self.d['dA'],
             self.d['dB']
         )
-        return 'stage moved', reply_data
+        if reply_data == 0:
+            return 'error with stage movement', None
+        else:
+            return 'stage moved', None
 
     def _handle_move_stage_goto(self):
-        """Handle stage movement to absolute position"""
+        """Handle stage movement to absolute position."""
         reply_data = self.microscope.move_stage_goto(
             self.d['X'],
             self.d['Y'],
@@ -947,7 +1001,10 @@ class MicroscopeServer():
             self.d['A'],
             self.d['B']
         )
-        return 'stage moved', reply_data
+        if reply_data == 0:
+            return 'error with stage movement', None
+        else:
+            return 'stage moved', None
 
     def _handle_get_mag(self):
         """Handle get magnification"""
