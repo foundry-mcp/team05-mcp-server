@@ -596,7 +596,7 @@ def get_screen_position():
                 return (0, 'Screen is in an unknown position')
 
 @mcp.tool()
-def set_screen_position(main_screen:int):
+def set_screen_position(screen_position:int):
     '''
     Set the microscope's main screen position using the TEMScripting screen value.
 
@@ -606,12 +606,14 @@ def set_screen_position(main_screen:int):
 
     Parameters
     ----------
-    main_screen : int
-        TEMScripting MainScreen value.
+    screen_position : int
+        TEMScripting screen position value: 2 raises the screen and 3 lowers it.
 
     '''
-    d = {'type': 'set_main_screen', 'main_screen': main_screen}
-    microscope_client.send_traffic(d)
+    d = {'type': 'set_screen_position', 'screen_position': screen_position}
+    Response = microscope_client.send_traffic(d)
+    if Response and Response['error'] is not None:
+        raise Exception(Response['error'])
 
 @mcp.tool()
 def set_mag(mag:int):

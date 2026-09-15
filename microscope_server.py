@@ -648,7 +648,11 @@ class MicroscopeControl():
         return self.Camera.ScreenPosition
 
     def set_screen_position(self, screen_position:int):
-        """Set the screen position. 2=up, 3=down"""
+        """Set the screen position. 2=up, 3=down."""
+        if type(screen_position) is not int:
+            raise TypeError('screen_position must be an integer')
+        if screen_position not in (2, 3):
+            raise ValueError('screen_position must be 2 (up) or 3 (down)')
         self.Camera.ScreenPosition = screen_position
 
     def get_metadata(self):
@@ -860,7 +864,7 @@ class MicroscopeServer():
             'get_voltage': self._handle_get_voltage,
             'set_mag': self._handle_set_mag,
             'set_camera_length_index': self._handle_set_camera_length_index,
-            'set_main_screen': self._handle_set_main_screen,
+            'set_screen_position': self._handle_set_screen_position,
             'set_defocus': self._handle_set_defocus,
             'open_column_valve': self._handle_open_column_valve,
             'close_column_valve': self._handle_close_column_valve,
@@ -1038,9 +1042,6 @@ class MicroscopeServer():
 
     def _handle_get_screen_current(self):
         """Handle get screen current"""
-        if self._handle_get_screen_position()[1] != 3:
-            self._hangle_set_screen_position()
-
         return 'screen current obtained', self.microscope.get_screen_current()
 
     def _handle_get_screen_position(self):
@@ -1063,9 +1064,9 @@ class MicroscopeServer():
         """Handle set camera length index"""
         return 'camera_length set', self.microscope.set_camera_length_index(self.d['CL_index'])
 
-    def _handle_set_main_screen(self):
-        """Handle set main screen"""
-        return 'main screen set', self.microscope.set_main_screen(self.d['main_screen'])
+    def _handle_set_screen_position(self):
+        """Handle set screen position"""
+        return 'screen position set', self.microscope.set_screen_position(self.d['screen_position'])
 
     def _handle_set_defocus(self):
         """Handle set defocus"""
