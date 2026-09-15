@@ -645,7 +645,7 @@ class MicroscopeControl():
         return self.Camera.ScreenCurrent
 
     def get_screen_position(self):
-        return self.Camera.ScreenPosition
+        return self.Camera.MainScreen
 
     def set_screen_position(self, screen_position:int):
         """Set the screen position. 2=up, 3=down."""
@@ -653,7 +653,7 @@ class MicroscopeControl():
             raise TypeError('screen_position must be an integer')
         if screen_position not in (2, 3):
             raise ValueError('screen_position must be 2 (up) or 3 (down)')
-        self.Camera.ScreenPosition = screen_position
+        self.Camera.MainScreen = screen_position
 
     def get_metadata(self):
         """ Gets some useful parameters about the microscope's
