@@ -578,8 +578,8 @@ def get_screen_position():
 
     Returns
     -------
-    : str
-        The position of the main screen: upo, down, or unknown.
+    : tuple (int, str)
+        The position of the main screen as a tuple. Element 0 is the position value, element 1 is the position description.
 
     '''
     d = {'type': 'get_screen_position'}
@@ -589,11 +589,11 @@ def get_screen_position():
             raise Exception('Command failed.')
         else:
             if Response['reply_data'] == 2:
-                return 'Screen is up'
+                return (2, 'Screen is up')
             elif Response['reply_data'] == 3:
-                return 'Screen is down'
+                return (3, 'Screen is down')
             else:
-                return 'Screen is in an unknown position'
+                return (0, 'Screen is in an unknown position')
 
 @mcp.tool()
 def set_main_screen(main_screen:int):
