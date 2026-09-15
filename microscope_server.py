@@ -647,10 +647,10 @@ class MicroscopeControl():
     def get_screen_position(self):
         return self.Camera.ScreenPosition
 
-    def set_main_screen(self, main_screen:int):
-        """Set the main screen position. 1=unknown, 2=up, 3=down"""
-        self.Camera.MainScreen = main_screen
-        
+    def set_screen_position(self, screen_position:int):
+        """Set the screen position. 2=up, 3=down"""
+        self.Camera.ScreenPosition = screen_position
+
     def get_metadata(self):
         """ Gets some useful parameters about the microscope's
         current settings. """

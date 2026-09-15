@@ -596,9 +596,13 @@ def get_screen_position():
                 return (0, 'Screen is in an unknown position')
 
 @mcp.tool()
-def set_main_screen(main_screen:int):
+def set_screen_position(main_screen:int):
     '''
-    Set the microscope's main screen using the TEMScripting screen value.
+    Set the microscope's main screen position using the TEMScripting screen value.
+
+    The possible values are:
+    2 = Raise the screen up
+    3 = Lower the screen down
 
     Parameters
     ----------
