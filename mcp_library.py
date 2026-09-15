@@ -551,7 +551,7 @@ def get_screen_current():
     Get the current measured beam current from the microscope screen in Amperes.
 
     If this is 0.0 then several things could be wrong:
-     - The screen is up
+     - The screen is up and out of the beam path
      - The beam is blanked
      - The column valve is closed
      - The beam current is too low to be measured by the screen current meter (< 0.04 nanoamperes)
