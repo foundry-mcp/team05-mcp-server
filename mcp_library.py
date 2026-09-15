@@ -578,8 +578,8 @@ def get_screen_position():
 
     Returns
     -------
-    : int
-        TEMScripting screen position value.
+    : str
+        The position of the main screen: upo, down, or unknown.
 
     '''
     d = {'type': 'get_screen_position'}
@@ -588,8 +588,12 @@ def get_screen_position():
         if Response['reply_data'] is None:
             raise Exception('Command failed.')
         else:
-            reply_data = Response['reply_data']
-            return reply_data
+            if Response['reply_data'] == 2:
+                return 'Screen is up'
+            elif Response['reply_data'] == 3:
+                return 'Screen is down'
+            else:
+                return 'Screen is in an unknown position'
 
 @mcp.tool()
 def set_main_screen(main_screen:int):
