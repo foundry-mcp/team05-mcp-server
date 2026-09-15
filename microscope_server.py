@@ -194,6 +194,7 @@ class MicroscopeControl():
         self.Acq = self._microscope.Acquisition # Acquisition object
         self.Ill = self._microscope.Illumination # pre-specimen Illumination system
         self.Proj = self._microscope.Projection # post-specimen Projection system
+        self.Camera = self._microscope.Camera # camera controls
         self.Stage = self._microscope.Stage # The sample stage
         
         # Connect to HAADF-STEM detector
@@ -639,7 +640,21 @@ class MicroscopeControl():
     def set_camera_length_index(self, CL_index):
         self.Proj.CameraLengthIndex = CL_index
         time.sleep(1)
-        
+
+    def get_screen_current(self):
+        return self.Camera.ScreenCurrent
+
+    def get_screen_position(self):
+        return self.Camera.MainScreen
+
+    def set_screen_position(self, screen_position:int):
+        """Set the screen position. 2=up, 3=down."""
+        if type(screen_position) is not int:
+            raise TypeError('screen_position must be an integer')
+        if screen_position not in (2, 3):
+            raise ValueError('screen_position must be 2 (up) or 3 (down)')
+        self.Camera.MainScreen = screen_position
+
     def get_metadata(self):
         """ Gets some useful parameters about the microscope's
         current settings. """
@@ -843,10 +858,13 @@ class MicroscopeServer():
             'get_stage_pos': self._handle_get_stage_pos,
             'get_camera_length': self._handle_get_camera_length,
             'get_camera_length_index': self._handle_get_camera_length_index,
+            'get_screen_current': self._handle_get_screen_current,
+            'get_screen_position': self._handle_get_screen_position,
             'get_defocus': self._handle_get_defocus,
             'get_voltage': self._handle_get_voltage,
             'set_mag': self._handle_set_mag,
             'set_camera_length_index': self._handle_set_camera_length_index,
+            'set_screen_position': self._handle_set_screen_position,
             'set_defocus': self._handle_set_defocus,
             'open_column_valve': self._handle_open_column_valve,
             'close_column_valve': self._handle_close_column_valve,
@@ -1022,6 +1040,14 @@ class MicroscopeServer():
         """Handle get camera length index"""
         return 'camera length index obtained', self.microscope.get_camera_length_index()
 
+    def _handle_get_screen_current(self):
+        """Handle get screen current"""
+        return 'screen current obtained', self.microscope.get_screen_current()
+
+    def _handle_get_screen_position(self):
+        """Handle get screen position"""
+        return 'screen position obtained', self.microscope.get_screen_position()
+
     def _handle_get_defocus(self):
         """Handle get defocus"""
         return 'defocus acquired', self.microscope.get_defocus()
@@ -1037,6 +1063,10 @@ class MicroscopeServer():
     def _handle_set_camera_length_index(self):
         """Handle set camera length index"""
         return 'camera_length set', self.microscope.set_camera_length_index(self.d['CL_index'])
+
+    def _handle_set_screen_position(self):
+        """Handle set screen position"""
+        return 'screen position set', self.microscope.set_screen_position(self.d['screen_position'])
 
     def _handle_set_defocus(self):
         """Handle set defocus"""

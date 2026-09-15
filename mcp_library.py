@@ -546,6 +546,79 @@ def get_camera_length_index():
             return reply_data
 
 @mcp.tool()
+def get_screen_current():
+    '''
+    Get the current measured beam current from the microscope screen in Amperes.
+
+    If this is 0.0 then several things could be wrong:
+     - The screen is up and out of the beam path
+     - The beam is blanked
+     - The column valve is closed
+     - The beam current is too low to be measured by the screen current meter (< 0.04 nanoamperes)
+
+    Returns
+    -------
+    : float
+        Screen current in Amperes
+
+    '''
+    d = {'type': 'get_screen_current'}
+    Response = microscope_client.send_traffic(d)
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
+
+@mcp.tool()
+def get_screen_position():
+    '''
+    Get the current microscope screen position. When the screen is up it is 
+    out of the beam path and when it is down it is in the beam path. 
+    The screen position is returned as a tuple with two elements. The first element is the position value
+    and the second element is a string description of the position.
+
+    Returns
+    -------
+    : tuple (int, str)
+        The position of the main screen as a tuple. Element 0 is the position value, element 1 is the position description.
+
+    '''
+    d = {'type': 'get_screen_position'}
+    Response = microscope_client.send_traffic(d)
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            if Response['reply_data'] == 2:
+                return (2, 'Screen is up and out of the beam path')
+            elif Response['reply_data'] == 3:
+                return (3, 'Screen is down and in the beam path')
+            else:
+                return (0, 'Screen is in an unknown position')
+
+@mcp.tool()
+def set_screen_position(screen_position:int):
+    '''
+    Set the microscope's main screen position using the TEMScripting screen value.
+
+    The possible values are:
+    2 = Raise the screen up out of the beam path
+    3 = Lower the screen down into the beam path
+
+    Parameters
+    ----------
+    screen_position : int
+        TEMScripting screen position value: 2 raises the screen and 3 lowers it.
+
+    '''
+    d = {'type': 'set_screen_position', 'screen_position': screen_position}
+    Response = microscope_client.send_traffic(d)
+    if Response and Response['error'] is not None:
+        raise Exception(Response['error'])
+
+@mcp.tool()
 def set_mag(mag:int):
     '''
     Set the STEM magnification.
