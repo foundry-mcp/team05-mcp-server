@@ -566,6 +566,26 @@ def get_screen_current():
             return reply_data
 
 @mcp.tool()
+def get_screen_position():
+    '''
+    Get the current microscope screen position.
+
+    Returns
+    -------
+    : int
+        TEMScripting screen position value.
+
+    '''
+    d = {'type': 'get_screen_position'}
+    Response = microscope_client.send_traffic(d)
+    if Response:
+        if Response['reply_data'] is None:
+            raise Exception('Command failed.')
+        else:
+            reply_data = Response['reply_data']
+            return reply_data
+
+@mcp.tool()
 def set_main_screen(main_screen:int):
     '''
     Set the microscope's main screen using the TEMScripting screen value.

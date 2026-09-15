@@ -644,6 +644,9 @@ class MicroscopeControl():
     def get_screen_current(self):
         return self.Camera.ScreenCurrent
 
+    def get_screen_position(self):
+        return self.Camera.ScreenPosition
+
     def set_main_screen(self, main_screen):
         self.Camera.MainScreen = main_screen
         
@@ -851,6 +854,7 @@ class MicroscopeServer():
             'get_camera_length': self._handle_get_camera_length,
             'get_camera_length_index': self._handle_get_camera_length_index,
             'get_screen_current': self._handle_get_screen_current,
+            'get_screen_position': self._handle_get_screen_position,
             'get_defocus': self._handle_get_defocus,
             'get_voltage': self._handle_get_voltage,
             'set_mag': self._handle_set_mag,
@@ -1034,6 +1038,10 @@ class MicroscopeServer():
     def _handle_get_screen_current(self):
         """Handle get screen current"""
         return 'screen current obtained', self.microscope.get_screen_current()
+
+    def _handle_get_screen_position(self):
+        """Handle get screen position"""
+        return 'screen position obtained', self.microscope.get_screen_position()
 
     def _handle_get_defocus(self):
         """Handle get defocus"""
