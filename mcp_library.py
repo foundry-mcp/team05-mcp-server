@@ -574,7 +574,10 @@ def get_screen_current():
 @mcp.tool()
 def get_screen_position():
     '''
-    Get the current microscope screen position.
+    Get the current microscope screen position. When the screen is up it is 
+    out of the beam path and when it is down it is in the beam path. 
+    The screen position is returned as a tuple with two elements. The first element is the position value
+    and the second element is a string description of the position.
 
     Returns
     -------
@@ -589,9 +592,9 @@ def get_screen_position():
             raise Exception('Command failed.')
         else:
             if Response['reply_data'] == 2:
-                return (2, 'Screen is up')
+                return (2, 'Screen is up and out of the beam path')
             elif Response['reply_data'] == 3:
-                return (3, 'Screen is down')
+                return (3, 'Screen is down and in the beam path')
             else:
                 return (0, 'Screen is in an unknown position')
 
@@ -601,8 +604,8 @@ def set_screen_position(screen_position:int):
     Set the microscope's main screen position using the TEMScripting screen value.
 
     The possible values are:
-    2 = Raise the screen up
-    3 = Lower the screen down
+    2 = Raise the screen up out of the beam path
+    3 = Lower the screen down into the beam path
 
     Parameters
     ----------
