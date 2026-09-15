@@ -548,12 +548,18 @@ def get_camera_length_index():
 @mcp.tool()
 def get_screen_current():
     '''
-    Get the current measured beam current from the microscope screen.
+    Get the current measured beam current from the microscope screen in Amperes.
+
+    If this is 0.0 then several things could be wrong:
+     - The screen is up
+     - The beam is blanked
+     - The column valve is closed
+     - The beam current is too low to be measured by the screen current meter (< 0.04 nanoamperes)
 
     Returns
     -------
     : float
-        Screen current.
+        Screen current in Amperes
 
     '''
     d = {'type': 'get_screen_current'}
