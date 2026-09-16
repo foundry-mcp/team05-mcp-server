@@ -334,8 +334,8 @@ class MicroscopeControl():
         
         Returns
         -------
-        : 0 or None
-        Returns 0 if the holder type is invalid or none. Otherwise returns None.
+        : 0, 1, 2 or None
+        Returns 1 for single tilt holder, 2 for double tilt holder, 0 if the holder type is invalid or none. Otherwise returns None.
         
         """
         print('holder = {}'.format(self.Stage.Holder))
@@ -362,7 +362,7 @@ class MicroscopeControl():
         # this sets the stage bits. 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
         # 16 is 11111 which adds beta tilt
         holder = self.get_holder_type()
-        if holder == 'single':
+        if holder == 1: # single tilt holder
             n = 15
         elif holder == 2:  # double tilt holder
             n = 16
@@ -403,7 +403,7 @@ class MicroscopeControl():
         # 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
         # 16 is 11111 which adds beta tilt
         holder = self.get_holder_type()
-        if holder == 'single':
+        if holder == 1: # single tilt holder
             n = 15
         elif holder == 2:  # double tilt holder
             n = 16
