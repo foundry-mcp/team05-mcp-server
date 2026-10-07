@@ -325,15 +325,4 @@ def put_note_test(distiller_scan_id: int, note: str):
         raise RequestException(f"Request exception occurred: {req_err}")
 
 if __name__ == "__main__":
-    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8081)
-    #mcp.run(transport = "sse", host = "127.0.0.1", port = 8081)
-    
-    # Test getting information from Distiller
-    #aa = get_scan_by_id_test(distiller_scan_id=35249)
-    #if aa.metadata:
-    #    print(f'Screen current = {aa.metadata['Screen current']}')
-    #if aa.notes:
-    #    print(f'notes = {aa.notes}')
-    
-    #print('change the note.')
-    # put_note(distiller_scan_id=35249, note='Posted through the API')
+    mcp.run(transport = "http", host = "team05-support.dhcp.lbl.gov", port = 8081)

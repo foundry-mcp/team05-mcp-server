@@ -1413,5 +1413,5 @@ if __name__ == "__main__":
     ) # communicates with the Gatan PC
 
     #print('Note: MCP run command commented out.') # for testing
-    mcp.run(transport = "sse", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    mcp.run(transport = "http", host = "team05-support.dhcp.lbl.gov", port = 8080)
     
