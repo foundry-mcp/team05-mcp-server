@@ -360,12 +360,16 @@ class MicroscopeControl():
         '''
         
         # this sets the stage bits. 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
-        # 16 is 11111 which adds beta tilt
+        # What Each Controls:
+        # - 7: XYZ only (no tilt at all)
+        # - 15: XYZA (X, Y, Z + alpha tilt, but NOT beta) ← This is your original example
+        # - 23: XYZB (X, Y, Z + beta tilt, but NOT alpha)
+        # - 31: XYZAB (all five axes - full freedom)
         holder = self.get_holder_type()
         if holder == 1: # single tilt holder
             n = 15
         elif holder == 2:  # double tilt holder
-            n = 16
+            n = 31
         else:
             print('Can not move holder named {}'.format(holder))
             return 0
@@ -401,12 +405,12 @@ class MicroscopeControl():
         """
         # this sets the stage bits.
         # 15 in binary is 11110 so the X, Y, Z, alpha are allowed to change
-        # 16 is 11111 which adds beta tilt
+        # 31 in binary is 11111 which adds beta tilt
         holder = self.get_holder_type()
         if holder == 1: # single tilt holder
             n = 15
         elif holder == 2:  # double tilt holder
-            n = 16
+            n = 31
         else:
             print('Can not move holder named {}'.format(holder))
             return 0
