@@ -7,6 +7,7 @@ A MCP agent that can talk to the Distiller database.
 
 from fastmcp import FastMCP
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any, Optional
 
 import requests
@@ -78,6 +79,74 @@ class Scan(BaseModel):
     image_path: Optional[str] = None
     notes: Optional[str]
     metadata: Optional[dict[str, Any]]# = Field(alias="metadata_")
+
+class JobType(str, Enum):
+    """The kind of processing job that can be submitted to Distiller."""
+    TRANSFER = "transfer"
+    COUNT = "count"
+    STREAMING = "streaming"
+
+class JobState(str, Enum):
+    """Slurm-derived state of a Distiller job."""
+    INITIALIZING = "INITIALIZING"
+    BOOT_FAIL = "BOOT_FAIL"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    CONFIGURING = "CONFIGURING"
+    DEADLINE = "DEADLINE"
+    FAILED = "FAILED"
+    NODE_FAIL = "NODE_FAIL"
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    REQUEUE_FED = "REQUEUE_FED"
+    REQUEUED = "REQUEUED"
+    REVOKED = "REVOKED"
+    SPECIAL_EXIT = "SPECIAL_EXIT"
+    STOPPED = "STOPPED"
+    SUSPENDED = "SUSPENDED"
+    TIMEOUT = "TIMEOUT"
+
+class Job(BaseModel):
+    """A processing job submitted to a compute machine (e.g. Perlmutter)
+    to act on one or more scans.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the job within the Distiller system.
+    job_type : JobType
+        The kind of job, e.g. "count" for 4D Camera frame counting.
+    scan_ids : list[int], optional
+        The Distiller scan ids this job operates on.
+    machine : str
+        The compute machine the job runs on, e.g. "perlmutter".
+    slurm_id : int, optional
+        The Slurm job id once the job has been submitted to the scheduler.
+    state : JobState
+        Current state of the job.
+    params : dict
+        Job-type-specific parameters, e.g. {"threshold": 4.5, "darkfield": "none"}
+        for a count job.
+    output : str, optional
+        Captured stdout/stderr from the job, once available.
+    elapsed : float, optional
+        Elapsed run time in seconds.
+    submit : datetime, optional
+        Time the job was submitted.
+    notes : str, optional
+        Notes about the job.
+    """
+    id: int
+    job_type: JobType
+    scan_ids: Optional[list[int]] = None
+    machine: str
+    slurm_id: Optional[int] = None
+    state: JobState = JobState.INITIALIZING
+    params: dict[str, Any]
+    output: Optional[str] = None
+    elapsed: Optional[float] = None
+    submit: Optional[datetime] = None
+    notes: Optional[str] = None
 
 @mcp.tool()
 def get_scan_by_id(distiller_scan_id: int):
@@ -248,6 +317,188 @@ def add_metadata(distiller_scan_id: int, metadata: dict[str, Any]):
         json_data = response.json()
         print(json_data)
         return Scan(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
+@mcp.tool()
+def run_count_job(
+    distiller_scan_id: int,
+    threshold: float = 4.5,
+    darkfield: str = "none",
+    machine: str = "perlmutter",
+) -> Job:
+    """ Submit a "count" job to Distiller for a 4D Camera scan. This runs
+    electron-counting on the raw frames for the given scan on the named
+    compute machine.
+
+    Parameters
+    ----------
+    distiller_scan_id : int
+        The Distiller scan id to run the count job on.
+    threshold : float
+        Counting threshold, in the same units Distiller already uses for
+        this parameter. Defaults to 4.5, the value used by prior count jobs.
+    darkfield : str
+        Darkfield correction mode, e.g. "none". Defaults to "none", the value
+        used by prior count jobs.
+    machine : str
+        The compute machine to submit the job to. Defaults to "perlmutter",
+        the only machine currently registered in Distiller.
+
+    Returns
+    -------
+    : Job
+        The newly created Job, including its Distiller id and initial state.
+    """
+    import json
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/jobs"
+    body = {
+        "job_type": JobType.COUNT.value,
+        "scan_id": distiller_scan_id,
+        "machine": machine,
+        "params": {
+            "threshold": threshold,
+            "darkfield": darkfield,
+        },
+    }
+
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(body))
+        response.raise_for_status()
+        json_data = response.json()
+        return Job(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
+@mcp.tool()
+def get_job_by_id(distiller_job_id: int) -> Job:
+    """ Get information about a single job in Distiller, including its
+    current state, Slurm id, and any captured output.
+
+    Parameters
+    ----------
+    distiller_job_id : int
+        The Distiller job id.
+
+    Returns
+    -------
+    : Job
+        The Job with the given id.
+    """
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/jobs/{distiller_job_id}"
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        json_data = response.json()
+        return Job(**json_data)
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
+@mcp.tool()
+def get_jobs(
+    skip: int = 0,
+    limit: int = 100,
+    job_type: Optional[JobType] = None,
+    start: Optional[datetime] = None,
+    end: Optional[datetime] = None,
+    scan_id: Optional[int] = None,
+) -> list[Job]:
+    """ Fetch a list of jobs with various filter options.
+
+    Parameters
+    ----------
+    skip : int
+        Number of records to skip.
+    limit : int
+        Maximum number of records to return.
+    job_type : JobType, optional
+        Filter by job type, e.g. JobType.COUNT.
+    start : datetime, optional
+        Start of the date range for job submission time.
+    end : datetime, optional
+        End of the date range for job submission time.
+    scan_id : int, optional
+        Filter by the Distiller scan id the job operates on.
+
+    Returns
+    -------
+    : list[Job]
+        A list of Job objects matching the criteria.
+    """
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    params: dict[str, Any] = {
+        "skip": skip,
+        "limit": limit,
+    }
+
+    if job_type is not None:
+        params["job_type"] = job_type.value
+    if start is not None:
+        params["start"] = start.isoformat()
+    if end is not None:
+        params["end"] = end.isoformat()
+    if scan_id is not None:
+        params["scan_id"] = scan_id
+
+    url = f"{settings.API_URL}/jobs"
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        json_data = response.json()
+        return [Job(**job_data) for job_data in json_data]
+    except HTTPError as http_err:
+        raise HTTPError(f"HTTP error occurred: {http_err}")
+    except RequestException as req_err:
+        raise RequestException(f"Request exception occurred: {req_err}")
+
+@mcp.tool()
+def cancel_job(distiller_job_id: int) -> Job:
+    """ Cancel a running or pending job in Distiller.
+
+    Parameters
+    ----------
+    distiller_job_id : int
+        The Distiller job id to cancel.
+
+    Returns
+    -------
+    : Job
+        The updated Job, reflecting the cancelled state.
+    """
+    headers = {
+        settings.API_KEY_NAME: settings.API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    url = f"{settings.API_URL}/jobs/{distiller_job_id}/cancel"
+
+    try:
+        response = requests.put(url, headers=headers)
+        response.raise_for_status()
+        json_data = response.json()
+        return Job(**json_data)
     except HTTPError as http_err:
         raise HTTPError(f"HTTP error occurred: {http_err}")
     except RequestException as req_err:
