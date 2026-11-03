@@ -503,6 +503,44 @@ class AutoScriptMicroscope():
 
         return image_data, calX, calY, unitName
 
+    def microscope_acquire_flucam_image(self, exposure_time, size):
+        '''
+        Acquire an image using the FluCam (fluorescent screen camera).
+
+        The FluCam shares the main fluorescent screen with the HAADF
+        detector path; the acquisition call inserts the screen/detector
+        automatically, no manual insert/retract is needed. FluCam
+        images are not a calibrated real-space detector, so pixel
+        size/units may not be meaningful or populated.
+
+        Parameters
+        ----------
+        exposure_time : float
+            Exposure time in seconds.
+        size : int
+            Square image size in pixels.
+
+        Returns
+        -------
+        image_data, calX, calY, unitName
+            Acquired image as a numpy array, the x and y pixel
+            calibration, and the calibration unit name. calX/calY/unitName
+            fall back to (1, 1, 'pixel') if no calibration is available.
+        '''
+        print('Acquiring FluCam image with size = {}, exposure = {}'.format(size, exposure_time))
+
+        image = self.acquisition.acquire_camera_image(CameraType.FLUCAM, int(size), exposure_time)
+        image_data = np.array(image.data)
+
+        try:
+            calX = image.metadata.binary_result.pixel_size.x
+            calY = image.metadata.binary_result.pixel_size.y
+            unitName = str(image.metadata.binary_result.pixel_size_x_unit)
+        except Exception:
+            calX, calY, unitName = 1, 1, 'pixel'
+
+        return image_data, calX, calY, unitName
+
     def get_camera_length(self):
         return self.optics.camera_length.value.nominal
 
@@ -688,6 +726,45 @@ def acquire_image(dwell:float=2e-6, shape:tuple=(256,256)):
 
     offset = (0, 0) # hard coded for now
     image, calx, caly, cal_unit_name = autoscript_microscope.microscope_acquire_image(dwell, shape, offset)
+    image_min = image.min()
+    image_max = image.max()
+    image_std = image.std()
+
+    new_id = mfid.mfid()
+    dir_path = Path('D:/user_data/Claude')
+    file_path = dir_path / Path(f'{new_id[0]}.emd')
+    write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
+
+    return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
+
+@mcp.tool()
+def acquire_flucam_image(exposure_time:float=0.1, size:int=1024):
+    '''
+    Acquire an image using the FluCam (fluorescent screen camera). A
+    tuple is returned with information about the image. The image is
+    saved to disk as a Berkeley EMD file at the file path returned
+    from this function.
+
+    The FluCam is not a calibrated real-space detector like the
+    HAADF-STEM detector, so the pixel calibration and units may not
+    be meaningful; they fall back to (1, 1, 'pixel') if unavailable.
+
+    Parameters
+    ----------
+    exposure_time : float
+        Exposure time in seconds. The default is 0.1 seconds.
+    size : int
+        Square image size in pixels. The default is 1024.
+
+    Returns
+    -------
+    : tuple (str, float, float, string, float, float, float)
+        The tuple is made of 7 elements. The description of the elements are
+        file path, (x pixel calibration, y pixel calibration, the calibration unit name,
+        the image minimum, the image maximum, and the image standard deviation).
+    '''
+
+    image, calx, caly, cal_unit_name = autoscript_microscope.microscope_acquire_flucam_image(exposure_time, size)
     image_min = image.min()
     image_max = image.max()
     image_std = image.std()
