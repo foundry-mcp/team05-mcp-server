@@ -1150,8 +1150,8 @@ def parse_args():
     )
     parser.add_argument(
         '--microscope-host',
-        default='192.168.0.24',
-        help='Microscope AutoScript server hostname (default: 192.168.0.24)'
+        default='192.168.0.1',
+        help='Microscope AutoScript server hostname (default: 192.168.0.1)'
     )
     return parser.parse_args()
 
