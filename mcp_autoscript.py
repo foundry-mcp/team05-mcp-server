@@ -740,7 +740,7 @@ def acquire_image(dwell:float=2e-6, shape:tuple=(256,256)):
     image_std = image.std()
 
     new_id = mfid.mfid()
-    dir_path = Path('D:/user_data/Claude')
+    dir_path = Path('D:/UserData_Spectre/Claude')
     file_path = dir_path / Path(f'{new_id[0]}.emd')
     write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
 
@@ -779,7 +779,7 @@ def acquire_flucam_image(exposure_time:float=0.1, size:int=1024):
     image_std = image.std()
 
     new_id = mfid.mfid()
-    dir_path = Path('D:/user_data/Claude')
+    dir_path = Path('D:/UserData_Spectre/Claude')
     file_path = dir_path / Path(f'{new_id[0]}.emd')
     write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
 
