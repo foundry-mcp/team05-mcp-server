@@ -1250,4 +1250,4 @@ if __name__ == "__main__":
 
     autoscript_microscope = AutoScriptMicroscope(microscope)
 
-    mcp.run(transport = "http", host = "team05-support.dhcp.lbl.gov", port = 8080)
+    mcp.run(transport = "http", host = "spectre-support.dhcp.lbl.gov", port = 8080)
