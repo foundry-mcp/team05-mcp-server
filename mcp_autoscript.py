@@ -484,16 +484,25 @@ class AutoScriptMicroscope():
 
         print('Acquiring image with shape = {}, {}, offset = {}, {}'.format(sizeX, sizeY, offsetX, offsetY))
 
+        # StemAcquisitionSettings.size is a single int (square full-frame scan
+        # resolution), not a (width, height) tuple. A non-square or offset
+        # image is cropped out of that square scan via `region` instead.
+        full_size = max(sizeX, sizeY)
         settings = StemAcquisitionSettings(
             dwell,
             detector_types=[DetectorType.HAADF],
-            size=(sizeX, sizeY),
+            size=full_size,
             region=Region(RegionCoordinateSystem.PIXELS, rectangle=(offsetX, offsetY, sizeX, sizeY)),
         )
 
         self.unblank()
-        images = self.acquisition.acquire_stem_images_advanced(settings)
-        self.blank()
+        try:
+            images = self.acquisition.acquire_stem_images_advanced(settings)
+        finally:
+            # Always re-blank, even if the acquisition call raises, so a
+            # failed acquisition doesn't leave the beam unblanked or the
+            # detector marked busy for the next acquisition call.
+            self.blank()
 
         image = images[0]
         image_data = np.array(image.data)
