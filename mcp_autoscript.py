@@ -120,7 +120,7 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
                 'stage position',
                 'stem rotation',
                 'stem field of view',
-                'stem magnification',
+                'tem magnification',
             ]
             for key in metadata_keys:
                 if key in md:
@@ -219,6 +219,26 @@ class AutoScriptMicroscope():
         self.detectors = microscope.detectors
         self.acquisition = microscope.acquisition
 
+    def _require_optical_mode(self, expected_mode, tool_name):
+        """Raise a clear error if the microscope is not in the optical
+        mode a tool requires, instead of silently acting on the wrong
+        mode (e.g. changing TEM magnification while in STEM).
+
+        Parameters
+        ----------
+        expected_mode : OpticalMode
+            The optical mode (OpticalMode.STEM or OpticalMode.TEM) the
+            calling tool requires.
+        tool_name : str
+            Name of the calling tool, used in the error message.
+        """
+        current_mode = self.optics.optical_mode
+        if current_mode != expected_mode:
+            raise ValueError(
+                "{} requires the microscope to be in {} mode, but it is "
+                "currently in {} mode.".format(tool_name, expected_mode, current_mode)
+            )
+
     def open_column_valve(self):
         """Opens the microscope column valves"""
         self.vacuum.column_valves.open()
@@ -229,29 +249,101 @@ class AutoScriptMicroscope():
         self.vacuum.column_valves.close()
         print('Column valves closed')
 
-    def get_mag(self):
-        """Get the STEM magnification.
+    def get_tem_magnification(self):
+        """Get the TEM imaging magnification.
+
+        NOTE: AutoScript's optics.magnification is TEM-imaging-only and
+        is not aware of optical_mode; it has no effect on and no
+        relation to STEM scanning, which uses field of view instead
+        (see get_stem_field_of_view/set_stem_field_of_view).
 
         Returns
         -------
         : float
-        The STEM magnification value.
+        The TEM magnification value.
         """
+        self._require_optical_mode(OpticalMode.TEM, 'get_tem_magnification')
         return self.optics.magnification.value.nominal
 
-    def set_mag(self, mag):
-        """Set the STEM magnification to the closest available labelled step.
+    def set_tem_magnification(self, mag):
+        """Set the TEM imaging magnification to the closest available labelled step.
+
+        NOTE: AutoScript's optics.magnification is TEM-imaging-only and
+        is not aware of optical_mode; it has no effect on and no
+        relation to STEM scanning, which uses field of view instead
+        (see get_stem_field_of_view/set_stem_field_of_view).
 
         Parameters
         ----------
         mag : float
             The desired magnification as a number. e.x. 1.8 Mx is 1800000
         """
+        self._require_optical_mode(OpticalMode.TEM, 'set_tem_magnification')
         self.optics.projector_mode = ProjectorMode.IMAGING
         available = self.optics.magnification.available_values
         nearest = _nearest_label(mag, available)
         self.optics.set_projector(nearest.label)
-        print('Mag set to {}'.format(self.optics.magnification.value.nominal))
+        print('TEM magnification set to {}'.format(self.optics.magnification.value.nominal))
+
+    def get_stem_field_of_view(self):
+        """Get the STEM scan field of view.
+
+        NOTE: AutoScript has no STEM magnification property at all, only
+        a continuous field of view in meters. See
+        get_stem_magnification/set_stem_magnification for a
+        magnification-number convenience wrapper around this value.
+
+        Returns
+        -------
+        : float
+        The STEM scan field of view in meters.
+        """
+        self._require_optical_mode(OpticalMode.STEM, 'get_stem_field_of_view')
+        return self.optics.scan_field_of_view
+
+    def set_stem_field_of_view(self, field_of_view):
+        """Set the STEM scan field of view.
+
+        NOTE: AutoScript has no STEM magnification property at all, only
+        a continuous field of view in meters. Only available in STEM
+        optical_mode. See get_stem_magnification/set_stem_magnification
+        for a magnification-number convenience wrapper around this value.
+
+        Parameters
+        ----------
+        field_of_view : float
+            The desired STEM scan field of view in meters.
+        """
+        self._require_optical_mode(OpticalMode.STEM, 'set_stem_field_of_view')
+        self.optics.scan_field_of_view = field_of_view
+        print('STEM field of view set to {}'.format(self.optics.scan_field_of_view))
+
+    def get_stem_magnification(self):
+        """Get the STEM magnification, computed from the scan field of
+        view using the AutoScript Optics User Guide convention: the
+        displayed magnification is 0.1 / field of view (field of view
+        in meters).
+
+        Returns
+        -------
+        : float
+        The STEM magnification, by the 0.1 / field-of-view convention.
+        """
+        return 0.1 / self.get_stem_field_of_view()
+
+    def set_stem_magnification(self, mag):
+        """Set the STEM magnification by converting to a scan field of
+        view using the AutoScript Optics User Guide convention: the
+        displayed magnification is 0.1 / field of view (field of view
+        in meters).
+
+        Parameters
+        ----------
+        mag : float
+            The desired STEM magnification, by the 0.1 / field-of-view
+            convention.
+        """
+        self.set_stem_field_of_view(0.1 / mag)
 
     def get_stem_rotation(self):
         """Get the STEM rotation in radians.
@@ -607,7 +699,14 @@ class AutoScriptMicroscope():
         md['stage position'] = self.get_stage_pos()
         try:
             md['stem rotation'] = self.get_stem_rotation()
-            md['stem magnification'] = self.get_mag()
+        except Exception:
+            pass
+        try:
+            md['stem field of view'] = self.get_stem_field_of_view()
+        except Exception:
+            pass
+        try:
+            md['tem magnification'] = self.get_tem_magnification()
         except Exception:
             pass
         return md
@@ -786,22 +885,32 @@ def acquire_flucam_image(exposure_time:float=0.1, size:int=1024):
     return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
 
 @mcp.tool()
-def get_mag():
+def get_tem_magnification():
     '''
-    Get current STEM magnification as an integer.
+    Get current TEM imaging magnification as an integer.
+
+    NOTE: this is the TEM imaging magnification, not related to STEM
+    scanning. AutoScript has no STEM magnification concept at all; use
+    get_stem_field_of_view/set_stem_field_of_view to control STEM scan
+    size instead.
 
     Returns
     -------
     : int
-        Current magnification.
+        Current TEM magnification.
 
     '''
-    return autoscript_microscope.get_mag()
+    return autoscript_microscope.get_tem_magnification()
 
 @mcp.tool()
-def set_mag(mag:int):
+def set_tem_magnification(mag:int):
     '''
-    Set the STEM magnification to the closest available labelled step.
+    Set the TEM imaging magnification to the closest available labelled step.
+
+    NOTE: this only affects TEM imaging magnification, not STEM
+    scanning. AutoScript has no STEM magnification concept at all; use
+    get_stem_field_of_view/set_stem_field_of_view to control STEM scan
+    size instead.
 
     Parameters
     ----------
@@ -813,7 +922,93 @@ def set_mag(mag:int):
     None
 
     '''
-    autoscript_microscope.set_mag(mag)
+    autoscript_microscope.set_tem_magnification(mag)
+
+@mcp.tool()
+def get_stem_magnification():
+    '''
+    Get the current STEM magnification.
+
+    AutoScript has no native STEM magnification property, only a
+    continuous scan field of view in meters. This follows the
+    AutoScript Optics User Guide convention: displayed magnification
+    is 0.1 / field of view (field of view in meters). Use
+    get_stem_field_of_view if you want the underlying field of view
+    directly instead.
+
+    Returns
+    -------
+    : float
+        Current STEM magnification, by the 0.1 / field-of-view convention.
+
+    '''
+    return autoscript_microscope.get_stem_magnification()
+
+@mcp.tool()
+def set_stem_magnification(mag:float):
+    '''
+    Set the STEM magnification.
+
+    AutoScript has no native STEM magnification property, only a
+    continuous scan field of view in meters. This converts the
+    requested magnification to a field of view using the AutoScript
+    Optics User Guide convention: displayed magnification is
+    0.1 / field of view (field of view in meters). Only available in
+    STEM optical mode. Use set_stem_field_of_view if you want to set
+    the underlying field of view directly instead.
+
+    Parameters
+    ----------
+    mag : float
+        Desired STEM magnification, by the 0.1 / field-of-view convention.
+
+    Returns
+    -------
+    None
+
+    '''
+    autoscript_microscope.set_stem_magnification(mag)
+
+@mcp.tool()
+def get_stem_field_of_view():
+    '''
+    Get the current STEM scan field of view in meters.
+
+    NOTE: AutoScript has no STEM magnification concept; field of view
+    is the only native way to control STEM scan size. See
+    get_stem_magnification/set_stem_magnification for a
+    magnification-number convenience wrapper around this value.
+
+    Returns
+    -------
+    : float
+        Current STEM scan field of view in meters.
+
+    '''
+    return autoscript_microscope.get_stem_field_of_view()
+
+@mcp.tool()
+def set_stem_field_of_view(field_of_view:float):
+    '''
+    Set the STEM scan field of view in meters. Only available in STEM
+    optical mode.
+
+    NOTE: AutoScript has no native STEM magnification property; field
+    of view is the only native way to control STEM scan size. See
+    get_stem_magnification/set_stem_magnification for a
+    magnification-number convenience wrapper around this value.
+
+    Parameters
+    ----------
+    field_of_view : float
+        Desired STEM scan field of view in meters.
+
+    Returns
+    -------
+    None
+
+    '''
+    autoscript_microscope.set_stem_field_of_view(field_of_view)
 
 @mcp.tool()
 def get_convergence_angle():
