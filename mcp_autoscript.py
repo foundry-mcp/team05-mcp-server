@@ -508,6 +508,63 @@ class AutoScriptMicroscope():
         """
         self.optics.stigmators.condenser_stigmator = Point(stig[0], stig[1])
 
+    def get_monochromator_focus(self):
+        """Returns the monochromator focus in volts.
+
+        NOTE: this adjusts the gun lens excitation, which changes the
+        beam current without changing any other optics. It is distinct
+        from the objective/intensity defocus used for image focus. The
+        monochromator is only applicable on 300 kV systems.
+
+        Returns
+        -------
+        : float
+        The monochromator focus in volts.
+        """
+        return self.optics.monochromator.focus
+
+    def set_monochromator_focus(self, focus):
+        """Sets the monochromator focus in volts.
+
+        NOTE: this adjusts the gun lens excitation, which changes the
+        beam current without changing any other optics. It is distinct
+        from the objective/intensity defocus used for image focus. The
+        monochromator is only applicable on 300 kV systems.
+
+        Parameters
+        ----------
+        focus : float
+            The desired monochromator focus in volts.
+        """
+        self.optics.monochromator.focus = focus
+        print('Monochromator focus set to {}'.format(self.optics.monochromator.focus))
+
+    def get_monochromator_shift(self):
+        """Returns the monochromator shift. This is a low level value
+        used to control the monochromator's X and Y coils, in scaled
+        units relative to the stored alignment value.
+
+        Returns
+        -------
+        : tuple (float, float)
+        The monochromator shift as a 2-tuple (x, y) in scaled units.
+        """
+        shift = self.optics.monochromator.shift
+        return (shift.x, shift.y)
+
+    def set_monochromator_shift(self, shift):
+        """Sets the monochromator shift. This is a low level value
+        used to control the monochromator's X and Y coils, in scaled
+        units relative to the stored alignment value.
+
+        Parameters
+        ----------
+        shift : tuple (float, float)
+            The desired monochromator shift as a 2-tuple (x, y) in
+            scaled units.
+        """
+        self.optics.monochromator.shift = Point(shift[0], shift[1])
+
     def get_stem_intensity_defocus(self):
         ''' Returns the STEM "intensity" (condenser) defocus component in meters.
 
@@ -1273,6 +1330,80 @@ def get_beam_tilt():
 
     '''
     return autoscript_microscope.get_beam_tilt()
+
+@mcp.tool()
+def get_monochromator_focus():
+    '''
+    Get the monochromator focus in volts.
+
+    This adjusts the gun lens excitation, which changes the beam
+    current without changing any other optics. It is distinct from
+    the objective/intensity defocus tools used for image focus.
+    The monochromator is only applicable on 300 kV systems.
+
+    Returns
+    -------
+    : float
+        The monochromator focus in volts.
+
+    '''
+    return autoscript_microscope.get_monochromator_focus()
+
+@mcp.tool()
+def set_monochromator_focus(focus:float):
+    '''
+    Set the monochromator focus in volts.
+
+    This adjusts the gun lens excitation, which changes the beam
+    current without changing any other optics. It is distinct from
+    the objective/intensity defocus tools used for image focus.
+    The monochromator is only applicable on 300 kV systems.
+
+    Parameters
+    ----------
+    focus : float
+        Desired monochromator focus in volts.
+
+    Returns
+    -------
+    None
+
+    '''
+    autoscript_microscope.set_monochromator_focus(focus)
+
+@mcp.tool()
+def get_monochromator_shift():
+    '''
+    Get the monochromator shift. This is a low level value used to
+    control the monochromator's X and Y coils, in scaled units
+    relative to the stored alignment value.
+
+    Returns
+    -------
+    : tuple
+        The monochromator shift as (x, y) in scaled units.
+
+    '''
+    return autoscript_microscope.get_monochromator_shift()
+
+@mcp.tool()
+def set_monochromator_shift(shift:tuple):
+    '''
+    Set the monochromator shift. This is a low level value used to
+    control the monochromator's X and Y coils, in scaled units
+    relative to the stored alignment value.
+
+    Parameters
+    ----------
+    shift : tuple
+        Desired monochromator shift as (x, y) in scaled units.
+
+    Returns
+    -------
+    None
+
+    '''
+    autoscript_microscope.set_monochromator_shift(shift)
 
 @mcp.tool()
 def open_column_valve():
