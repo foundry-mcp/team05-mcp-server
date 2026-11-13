@@ -978,13 +978,6 @@ def get_screenshot():
     if Response:
         image = pilImage.open(io.BytesIO(Response['reply_data']))
         image.save(r'd:\user_data\claude_image.png')
-    return
-    # return a smaller image to the LLM
-    # original_width, original_height = image.size
-    # new_size = (original_width//2, original_height//2)
-    # resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
-    # resized_image.save(r'd:\user_data\claude_image2.jpg')
-    # return mcpImage(r'd:\user_data\claude_image2.jpg')
 
 @mcp.tool()
 def blank_beam():
@@ -1164,15 +1157,34 @@ def acquire_4D_scan(width:int, height:int, scan_rotation:float, nread:int):
      
     Returns
     -------
-    None.
-    
+    A tuple of the file path and the simultaneously acquired HAADF-STEM
+    image's calibration and intensity statistics. The 4D Camera data
+    itself is captured by the 4D Camera backend and is not returned here.
+
     '''
     params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
     response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
-    #print(response)
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
-    #return response
+
+    if response:
+        if response['error'] is not None:
+            raise Exception('Gatan server error: {}'.format(response['error']))
+
+        (image, metadata) = response['reply_data']
+        calx = metadata['calX']
+        caly = metadata['calY']
+        cal_unit_name = metadata.get('units', 'meters')
+        image_min = image.min()
+        image_max = image.max()
+        image_std = image.std()
+
+        new_id = mfid.mfid()
+        dir_path = Path('D:/user_data/Claude')
+        file_path = dir_path / Path(f'{new_id[0]}.emd')
+        write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
+
+        return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
 
 @mcp.tool()
 def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_rotation:float=0, signal_index:int=0):
