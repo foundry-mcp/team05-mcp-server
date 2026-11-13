@@ -429,10 +429,6 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     
     return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
 
-def load_data(file_path):
-    """Load an EMD data set from a file path"""
-    pass
-
 @mcp.tool()
 def get_mag():
     '''
