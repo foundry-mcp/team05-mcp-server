@@ -24,6 +24,12 @@ import mfid
 
 mcp = FastMCP("TEAM05_Controller")
 
+
+class MicroscopeCommandError(RuntimeError):
+    """Raised when a command to the microscope/Gatan server fails or
+    receives no response."""
+
+
 from PIL import Image as pilImage
 
 import sys
@@ -64,7 +70,9 @@ def get_metadata():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -225,7 +233,9 @@ def acquire_ceos_tableau(angle=18, tableau_type='fast'):
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -237,7 +247,9 @@ def acquire_c1a1(WD_x=0.0, WD_y=0.0):
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -409,7 +421,7 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     d = {'type': 'image', 'dwell': dwell, 'shape': shape, 'offset': offset}
     Response = microscope_client.send_traffic(d)
     if Response is None:
-        raise Exception('Command failed.')
+        raise MicroscopeCommandError(f"'{d['type']}' failed: no response received from microscope server")
     
     (image, calx, caly, cal_unit_name) = Response['reply_data']
     image_min = image.min()
@@ -442,7 +454,9 @@ def get_mag():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -462,7 +476,9 @@ def get_convergence_angle():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -485,7 +501,9 @@ def get_stage_pos():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -507,7 +525,9 @@ def get_camera_length():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -529,7 +549,9 @@ def get_camera_length_index():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -555,7 +577,9 @@ def get_screen_current():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -578,7 +602,9 @@ def get_screen_position():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             if Response['reply_data'] == 2:
                 return (2, 'Screen is up and out of the beam path')
@@ -1018,7 +1044,9 @@ def get_voltage():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -1038,7 +1066,9 @@ def get_stem_rotation_angle():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -1075,12 +1105,14 @@ def get_defocus():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-                raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
     else:
-        raise Exception('Command failed.')
+        raise MicroscopeCommandError(f"'{d['type']}' failed: no response received from microscope server")
 
 @mcp.tool()
 def set_defocus(target_df:float=0e-9):
