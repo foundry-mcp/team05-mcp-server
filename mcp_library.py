@@ -785,7 +785,6 @@ def cross_correlate(im0:npt.NDArray, im1:npt.NDArray):
      The numpy array returned is the cross-correlation of the two images.
 
     '''
-    p0 = np.zeros((im0.shape[0], im0.shape[1]))
     p1 = np.zeros((im0.shape[0], im0.shape[1]))
     p1[p1.shape[0]//2-im1.shape[0]//2:p1.shape[0]//2-im1.shape[0]//2 + im1.shape[0],
        p1.shape[1]//2-im1.shape[1]//2:p1.shape[1]//2-im1.shape[1]//2 + im1.shape[1]] = im1
