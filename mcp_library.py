@@ -621,7 +621,7 @@ def set_screen_position(screen_position:int):
     d = {'type': 'set_screen_position', 'screen_position': screen_position}
     Response = microscope_client.send_traffic(d)
     if Response and Response['error'] is not None:
-        raise Exception(Response['error'])
+        raise MicroscopeCommandError(f"'{d['type']}' failed: {Response['error']}")
 
 @mcp.tool()
 def set_mag(mag:int):
