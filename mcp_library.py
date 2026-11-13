@@ -1,37 +1,32 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Aug 21 14:00:45 2025
-
 This is a set of MCP commands for the TEAM 0.5 microscope and the 
 4D Camera. It sends commands to the microscope_server(s) running on
 the microscope PC and on the Gatan PC.
-
-@author: Peter Ercius, Alex Pattison, Morgan Wall, Stephanie Ribet
 """
 
-from pathlib import Path
 import argparse
 import io
-import time
-from typing import Optional
-
 import pickle
-import numpy as np
-import numpy.typing as npt
-import zmq
-
-from fastmcp import FastMCP
-
-from fastmcp.resources import FileResource
+import sys
+import time
+from pathlib import Path
+from typing import Optional
 
 import h5py
 import mfid
+import numpy as np
+import numpy.typing as npt
+import zmq
+from fastmcp import FastMCP
+from fastmcp.resources import FileResource
+from PIL import Image as pilImage
 
 mcp = FastMCP("TEAM05_Controller")
 
-from PIL import Image as pilImage
+class MicroscopeCommandError(RuntimeError):
+    """Raised when a command to the microscope/Gatan server fails or
+    receives no response."""
 
-import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from beacon_client import BEACON_Client
 
@@ -69,7 +64,9 @@ def get_metadata():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -127,17 +124,11 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         sample = f.create_group('sample')
         sample.attrs['sample name'] = sample_name
         
-        #dataroot = f['data']
-        #dataTop = dataroot['single']
-        dims = [dataTop['dim1'], dataTop['dim2']]
-            
-        #dset = dataTop['data']
-        
         imageShape = data.shape[-2:]
         xdim = np.linspace(0, (imageShape[0]-1) * calX * 1e9, imageShape[0]) # multiply by 1e9 for nanometers
         ydim = np.linspace(0, (imageShape[1]-1) * calY * 1e9, imageShape[1])
-        dims[-1][:] = ydim
-        dims[-2][:] = xdim
+        dataTop['dim2'][:] = ydim
+        dataTop['dim1'][:] = xdim
         
         # Add as attribute so loading in Fiji provides pixel size
         # Note: Must be 3D so set the first element to 1
@@ -236,7 +227,9 @@ def acquire_ceos_tableau(angle=18, tableau_type='fast'):
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -248,7 +241,9 @@ def acquire_c1a1(WD_x=0.0, WD_y=0.0):
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -420,7 +415,7 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     d = {'type': 'image', 'dwell': dwell, 'shape': shape, 'offset': offset}
     Response = microscope_client.send_traffic(d)
     if Response is None:
-        raise Exception('Command failed.')
+        raise MicroscopeCommandError(f"'{d['type']}' failed: no response received from microscope server")
     
     (image, calx, caly, cal_unit_name) = Response['reply_data']
     image_min = image.min()
@@ -433,10 +428,6 @@ def acquire_image(dwell:float=2e-6, shape:tuple =(256,256)):
     write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
     
     return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
-
-def load_data(file_path):
-    """Load an EMD data set from a file path"""
-    pass
 
 @mcp.tool()
 def get_mag():
@@ -453,7 +444,9 @@ def get_mag():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -473,7 +466,9 @@ def get_convergence_angle():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -496,7 +491,9 @@ def get_stage_pos():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -518,7 +515,9 @@ def get_camera_length():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -540,7 +539,9 @@ def get_camera_length_index():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -566,7 +567,9 @@ def get_screen_current():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -589,7 +592,9 @@ def get_screen_position():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             if Response['reply_data'] == 2:
                 return (2, 'Screen is up and out of the beam path')
@@ -616,7 +621,7 @@ def set_screen_position(screen_position:int):
     d = {'type': 'set_screen_position', 'screen_position': screen_position}
     Response = microscope_client.send_traffic(d)
     if Response and Response['error'] is not None:
-        raise Exception(Response['error'])
+        raise MicroscopeCommandError(f"'{d['type']}' failed: {Response['error']}")
 
 @mcp.tool()
 def set_mag(mag:int):
@@ -780,7 +785,6 @@ def cross_correlate(im0:npt.NDArray, im1:npt.NDArray):
      The numpy array returned is the cross-correlation of the two images.
 
     '''
-    p0 = np.zeros((im0.shape[0], im0.shape[1]))
     p1 = np.zeros((im0.shape[0], im0.shape[1]))
     p1[p1.shape[0]//2-im1.shape[0]//2:p1.shape[0]//2-im1.shape[0]//2 + im1.shape[0],
        p1.shape[1]//2-im1.shape[1]//2:p1.shape[1]//2-im1.shape[1]//2 + im1.shape[1]] = im1
@@ -974,13 +978,6 @@ def get_screenshot():
     if Response:
         image = pilImage.open(io.BytesIO(Response['reply_data']))
         image.save(r'd:\user_data\claude_image.png')
-    return
-    # return a smaller image to the LLM
-    # original_width, original_height = image.size
-    # new_size = (original_width//2, original_height//2)
-    # resized_image = image.resize(new_size, resample=pilImage.LANCZOS)
-    # resized_image.save(r'd:\user_data\claude_image2.jpg')
-    # return mcpImage(r'd:\user_data\claude_image2.jpg')
 
 @mcp.tool()
 def blank_beam():
@@ -1029,7 +1026,9 @@ def get_voltage():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -1049,7 +1048,9 @@ def get_stem_rotation_angle():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-            raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
@@ -1086,12 +1087,14 @@ def get_defocus():
     Response = microscope_client.send_traffic(d)
     if Response:
         if Response['reply_data'] is None:
-                raise Exception('Command failed.')
+            raise MicroscopeCommandError(
+                f"'{d['type']}' failed: {Response.get('error', 'no error detail provided')}"
+            )
         else:
             reply_data = Response['reply_data']
             return reply_data
     else:
-        raise Exception('Command failed.')
+        raise MicroscopeCommandError(f"'{d['type']}' failed: no response received from microscope server")
 
 @mcp.tool()
 def set_defocus(target_df:float=0e-9):
@@ -1154,15 +1157,34 @@ def acquire_4D_scan(width:int, height:int, scan_rotation:float, nread:int):
      
     Returns
     -------
-    None.
-    
+    A tuple of the file path and the simultaneously acquired HAADF-STEM
+    image's calibration and intensity statistics. The 4D Camera data
+    itself is captured by the 4D Camera backend and is not returned here.
+
     '''
     params = {'pwidth':width, 'pheight':height, 'rotation':scan_rotation, 'nread':nread}
     gatan_client.send_traffic(('set_gatan', 0)) # set gatan for 4D scan
     response = gatan_client.send_traffic(('acquire_4dcamera_scan', params))
-    #print(response)
     gatan_client.send_traffic(('set_tia', 0)) # set back to TIA control
-    #return response
+
+    if response:
+        if response['error'] is not None:
+            raise Exception('Gatan server error: {}'.format(response['error']))
+
+        (image, metadata) = response['reply_data']
+        calx = metadata['calX']
+        caly = metadata['calY']
+        cal_unit_name = metadata.get('units', 'meters')
+        image_min = image.min()
+        image_max = image.max()
+        image_std = image.std()
+
+        new_id = mfid.mfid()
+        dir_path = Path('D:/user_data/Claude')
+        file_path = dir_path / Path(f'{new_id[0]}.emd')
+        write_emd_data(str(file_path), image, calx, caly, user_name='Claude', sample_name='')
+
+        return (str(file_path), calx, caly, cal_unit_name, image_min, image_max, image_std)
 
 @mcp.tool()
 def acquire_haadf_dm(dwell_time:float=1e-6, width:int=256, height:int=256, scan_rotation:float=0, signal_index:int=0):
