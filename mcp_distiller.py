@@ -2,19 +2,15 @@
 A MCP agent that can talk to the Distiller database.
 """
 
-from fastmcp import FastMCP
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
 import requests
-from pydantic import AnyHttpUrl, BaseModel, Field
+from fastmcp import FastMCP
+from pydantic import AnyHttpUrl, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from requests.exceptions import HTTPError, RequestException
-
-import numpy as np
-import time
-import argparse
 
 mcp = FastMCP("DistillerController")
     
