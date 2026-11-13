@@ -1,12 +1,7 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Aug 21 14:00:45 2025
-
 This is a set of MCP commands for the TEAM 0.5 microscope and the 
 4D Camera. It sends commands to the microscope_server(s) running on
 the microscope PC and on the Gatan PC.
-
-@author: Peter Ercius, Alex Pattison, Morgan Wall, Stephanie Ribet
 """
 
 from pathlib import Path
@@ -127,17 +122,11 @@ def write_emd_data(file_path, data, calX, calY, user_name='Claude', sample_name=
         sample = f.create_group('sample')
         sample.attrs['sample name'] = sample_name
         
-        #dataroot = f['data']
-        #dataTop = dataroot['single']
-        dims = [dataTop['dim1'], dataTop['dim2']]
-            
-        #dset = dataTop['data']
-        
         imageShape = data.shape[-2:]
         xdim = np.linspace(0, (imageShape[0]-1) * calX * 1e9, imageShape[0]) # multiply by 1e9 for nanometers
         ydim = np.linspace(0, (imageShape[1]-1) * calY * 1e9, imageShape[1])
-        dims[-1][:] = ydim
-        dims[-2][:] = xdim
+        dataTop['dim2'][:] = ydim
+        dataTop['dim1'][:] = xdim
         
         # Add as attribute so loading in Fiji provides pixel size
         # Note: Must be 3D so set the first element to 1
