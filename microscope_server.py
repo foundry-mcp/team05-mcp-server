@@ -69,11 +69,19 @@ class CorrectorCommands():
             # Connect to server and send data
             sock.connect((self.host, self.port))
             sock.sendall(pynetstring.encode(data))
-                
-            # Receive data from the server and shut down
-            received = sock.recv(1024)
-            received = pynetstring.decode(received)
-        
+
+            # Read from the socket until a full netstring has been
+            # received; a single recv() call is not guaranteed to return
+            # the entire message (e.g. the "enhanced" tableau reply is
+            # larger than one TCP read).
+            decoder = pynetstring.Decoder()
+            received = []
+            while not received:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    raise ConnectionError('Connection closed by RPC gateway before a full reply was received.')
+                received = decoder.feed(chunk)
+
         finally:
             sock.close()
         
