@@ -21,13 +21,27 @@ import numpy.typing as npt
 import zmq
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 
 from fastmcp.resources import FileResource
 
 import h5py
 import mfid
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-mcp = FastMCP("TEAM05_Controller")
+
+class Settings(BaseSettings):
+    """ Settings for securing the MCP server. The .env file will contain
+    the necessary secrets."""
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra='ignore')
+    MCP_AUTH_TOKEN: str
+
+settings = Settings()
+
+auth = StaticTokenVerifier(
+    tokens={settings.MCP_AUTH_TOKEN: {"client_id": "team05-client"}},
+)
+mcp = FastMCP("TEAM05_Controller", auth=auth)
 
 from PIL import Image as pilImage
 

@@ -9,6 +9,7 @@ import io
 from pathlib import Path
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 
 import ncempy
 import numpy as np
@@ -18,11 +19,24 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from PIL import Image as PILImage
 import mfid
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 data = {} # a dictionary that holds all the data.
 metadata = {} # a dictionary that holds all the metadata
 
-mcp = FastMCP("NCEMPY MCP")
+
+class Settings(BaseSettings):
+    """ Settings for securing the MCP server. The .env file will contain
+    the necessary secrets."""
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra='ignore')
+    MCP_AUTH_TOKEN: str
+
+settings = Settings()
+
+auth = StaticTokenVerifier(
+    tokens={settings.MCP_AUTH_TOKEN: {"client_id": "team05-client"}},
+)
+mcp = FastMCP("NCEMPY MCP", auth=auth)
 
 
 def _render_and_show(image: np.ndarray, norm: str = "linear", title: str | None = None) -> None:

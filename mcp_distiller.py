@@ -6,6 +6,7 @@ A MCP agent that can talk to the Distiller database.
 """
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -18,8 +19,6 @@ import numpy as np
 import time
 import argparse
 
-mcp = FastMCP("DistillerController")
-    
 class Settings(BaseSettings):
     """ Settings for communicating with the Disitller API. The .env file
     will contain the necessary secrets."""
@@ -27,8 +26,14 @@ class Settings(BaseSettings):
     API_URL: AnyHttpUrl
     API_KEY_NAME: str
     API_KEY: str
+    MCP_AUTH_TOKEN: str
 
-settings = Settings() # API_URL = "https://fake.lbl.gov/api", API_KEY_NAME="fake", API_KEY='fake')  # type: ignore
+settings = Settings() # API_URL = "https://fake.lbl.gov/api", API_KEY_NAME="fake", API_KEY='fake', MCP_AUTH_TOKEN='fake')  # type: ignore
+
+auth = StaticTokenVerifier(
+    tokens={settings.MCP_AUTH_TOKEN: {"client_id": "team05-client"}},
+)
+mcp = FastMCP("DistillerController", auth=auth)
 
 class Location(BaseModel):
     """The location of a data set. If host is perlmutter then
