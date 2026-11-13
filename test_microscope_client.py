@@ -137,6 +137,18 @@ class MicroscopeTestClient():
         )
 
         self.test_command(
+            "Get Screen Current",
+            {'type': 'get_screen_current'},
+            expect_data=True
+        )
+
+        self.test_command(
+            "Get Screen Position",
+            {'type': 'get_screen_position'},
+            expect_data=True
+        )
+
+        self.test_command(
             "Get STEM Rotation",
             {'type': 'get_stem_rotation'},
             expect_data=True
