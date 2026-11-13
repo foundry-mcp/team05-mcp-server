@@ -4,35 +4,29 @@ This is a set of MCP commands for the TEAM 0.5 microscope and the
 the microscope PC and on the Gatan PC.
 """
 
-from pathlib import Path
 import argparse
 import io
-import time
-from typing import Optional
-
 import pickle
-import numpy as np
-import numpy.typing as npt
-import zmq
-
-from fastmcp import FastMCP
-
-from fastmcp.resources import FileResource
+import sys
+import time
+from pathlib import Path
+from typing import Optional
 
 import h5py
 import mfid
+import numpy as np
+import numpy.typing as npt
+import zmq
+from fastmcp import FastMCP
+from fastmcp.resources import FileResource
+from PIL import Image as pilImage
 
 mcp = FastMCP("TEAM05_Controller")
-
 
 class MicroscopeCommandError(RuntimeError):
     """Raised when a command to the microscope/Gatan server fails or
     receives no response."""
 
-
-from PIL import Image as pilImage
-
-import sys
 sys.path.insert(0, 'D:/user_data/Pattison/BEACON')
 from beacon_client import BEACON_Client
 
